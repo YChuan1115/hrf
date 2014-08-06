@@ -573,7 +573,7 @@ void CRForestDetector::getClassConfidence(std::vector<std::vector<IplImage*> >& 
 				cvSetZero(tmpClassProbs[cNr]);
 				cvGetRawData(tmpClassProbs[cNr],(uchar**)&(ptTmpProb[cNr]),&stepTmpProb);				
 			}
-			stepTmpProb /= sizeof(ptTmpProb[0]);
+			stepTmpProb /= sizeof(ptTmpProb[0][0]);
 
 			for (unsigned int y =0; y < h ; y++){
 				for (unsigned int x=0; x < w; x++){
