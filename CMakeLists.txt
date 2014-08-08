@@ -17,9 +17,14 @@ link_directories(${PCL_LIBRARY_DIRS})
 add_definitions(${PCL_DEFINITIONS})
 
 add_executable (CRForest-Detector CRForest-Detector.cpp Candidate.cpp CRForestDetector.cpp CRPatch.cpp CRTree.cpp HoG.cpp)
+add_executable (untitled untitled.cpp)
 
 target_link_libraries (CRForest-Detector 
 	${PCL_LIBRARIES}
+	${OpenCV_LIBS}
+)
+
+target_link_libraries (untitled 
 	${OpenCV_LIBS}
 )
 

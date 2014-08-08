@@ -36,8 +36,8 @@ public:
 	void GetTrainingLabelsForDetection(std::vector<int>& class_selector);
 
 	// Regression 
-	void regression(std::vector<const LeafNode*>& result, uchar** ptFCh, int stepImg, float scale_tree = -1.0f) const;
-	void regression(std::vector<const LeafNode*>& result, std::vector<unsigned int>& trID, uchar** ptFCh, int stepImg, CvRNG* pRNG, double thresh ,float scale_tree = -1.0f) const;
+	void regression(std::vector<const LeafNode*>& result, uchar** ptFCh, float scale_tree = -1.0f) const;
+	void regression(std::vector<const LeafNode*>& result, std::vector<unsigned int>& trID, uchar** ptFCh, CvRNG* pRNG, double thresh ,float scale_tree = -1.0f) const;
 
 	// Training
 	void trainForest(int min_s, int max_d, CvRNG* pRNG, const CRPatch& TrData, int samples, std::vector<int>& id, float scale_tree = 1.0f);
@@ -64,11 +64,11 @@ public:
 };
 
 // Matching 
-inline void CRForest::regression(std::vector<const LeafNode*>& result, uchar** ptFCh, int stepImg, float scale_tree) const {
+inline void CRForest::regression(std::vector<const LeafNode*>& result, uchar** ptFCh, float scale_tree) const {
 	// if scale_tree == -1.0f -> process all the trees
 	result.resize( vTrees.size() );
 	for(int i=0; i<(int)vTrees.size(); ++i) {
-		result[i] = vTrees[i]->regression(ptFCh, stepImg);
+		result[i] = vTrees[i]->regression(ptFCh);
 	}
 }
 

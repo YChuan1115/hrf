@@ -28,28 +28,20 @@
 /************************************/
 /****     CLASS Candidate        ****/
 /************************************/
-// 
-class Candidate{
-public: 
-    // class constructors
-    Candidate(const CRForest* crForest, IplImage* img, std::vector<float> candidate, int id, bool do_bpr=true);
-    ~Candidate(){clear();}
-    
+//
+class Candidate {
+public:
+	// class constructors
+	Candidate(const CRForest *crForest, Mat &img, std::vector<float> candidate, int id, bool do_bpr = true);
+	~Candidate() {
+		clear();
+	}
+
 
 public:
 	void clear();
-
-	void getBBfromBpr(int thresh=2, bool do_sym=false);
-	
-	void print(char* prefix){
-		// saving the backprojection mask
-		if(bpr) save_bp( prefix);
-	}
-
-void read(char* prefix){}
-
-private: 
-	void save_bp(char* prefix);
+	void getBBfromBpr(int thresh = 2, bool do_sym = false);
+	void read(char *prefix) {}
 
 public:
 	float weight;
@@ -62,8 +54,8 @@ public:
 	int n_classes;
 	int id;// candidate ID
 	bool bpr; // if the backprojection is held
-	
+
 public:
 	std::vector<float> bb; // bounding box structure
-	IplImage* backproj_mask; // backprojection image
+	Mat backproj_mask; // backprojection image
 };
