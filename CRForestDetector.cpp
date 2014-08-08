@@ -38,10 +38,10 @@ void CRForestDetector::voteColor(vector<Mat> &vImgAssign, vector<Mat> &vImgDetec
 	float ntrees = float(vImgAssign.size());
 	for (unsigned int trNr = 0; trNr < vImgAssign.size(); trNr++) {
 
-		for (unsigned int cy = 0 ; cy < vImgAssign[trNr].cols; ++cy) {
+		for (unsigned int cy = 0 ; cy < vImgAssign[trNr].rows; ++cy) {
 			float *ptr = vImgAssign[trNr].ptr<float>(cy);
 
-			for (unsigned int cx = 0; cx < vImgAssign[trNr].rows; ++cx) {
+			for (unsigned int cx = 0; cx < vImgAssign[trNr].cols; ++cx) {
 				// get the leaf_id
 				if (ptr[cx] < 0)
 					continue;
@@ -312,7 +312,7 @@ void CRForestDetector::assignCluster(Mat &img, Mat &depth_img, vector<Mat> &vImg
 	CRPatch::extractFeatureChannels(img, depth_img, vImg, scale);
 
 	// reset output image to -1 which indicates not matched regions
-	Scalar initialAssignValue(-1);
+	Scalar initialAssignValue(-1.0);
 	for (int i = 0; i < vImgAssign.size(); ++i)
 		vImgAssign[i] = initialAssignValue;
 
@@ -441,7 +441,7 @@ void CRForestDetector::getClassConfidence(vector<vector<Mat> > &vImgAssign, vect
 			for (int cNr = 0; cNr < nlabels; cNr++) {
 				blur(tmpClassProbs[cNr], tmpClassProbs[cNr], Size(outer_window, outer_window));
 				// to account for the subsampling
-				resize(tmpClassProbs[cNr], tmpClassProbs[cNr], Size(), scaleFactor);
+				resize(tmpClassProbs[cNr], tmpClassProbs[cNr], Size(), scaleFactor, scaleFactor);
 			}
 
 			for (int cNr = 0; cNr < nlabels; cNr++) {
