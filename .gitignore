@@ -22,3 +22,6 @@
 
 #Build folder
 build
+
+#stuff
+.fuse*
