@@ -418,7 +418,7 @@ void run_train() {
 
 	// Init random generator
 	time_t t = time(NULL);
-	int seed = 1407685013;//(int)(t / double(off_tree + 1));
+	int seed = (int)(t / double(off_tree + 1));//1407685013;
 
 	CvRNG cvRNG(seed);
 

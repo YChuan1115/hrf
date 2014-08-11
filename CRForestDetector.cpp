@@ -102,7 +102,7 @@ void CRForestDetector::voteForCandidate(vector<Mat> &vImgAssign, Candidate &cand
 		return;
 
 	time_t t = time(NULL);
-	int seed = 1407685013;//(int)t;
+	int seed = (int)t;//1407685013;
 	CvRNG pRNG(seed);
 	double value = 0.0;
 	double sample_votes = 0.998;// ignore the patches by this probability
