@@ -72,8 +72,8 @@ void CRPatch::extractFeatureChannels(Mat &img, Mat &depth_img, std::vector<Mat> 
 	Mat I_x, I_y;
 
 	// |I_x|, |I_y|
-	Sobel(vImg[0], I_x, CV_16UC1, 1, 0, 3);
-	Sobel(vImg[0], I_y, CV_16UC1, 0, 1, 3);
+	Sobel(vImg[0], I_x, CV_16SC1, 1, 0, 3);
+	Sobel(vImg[0], I_y, CV_16SC1, 0, 1, 3);
 	convertScaleAbs( I_x, vImg[3], 0.25);
 	convertScaleAbs( I_y, vImg[4], 0.25);
 
@@ -105,22 +105,22 @@ void CRPatch::extractFeatureChannels(Mat &img, Mat &depth_img, std::vector<Mat> 
 				dataZ[x] = (uchar)( sqrt(float(dataX[x] * dataX[x] + dataY[x] * dataY[x])) );
 			}
 		}
-	} 
+	}
 
 	// 9-bin HOG feature stored at vImg[7] - vImg[15]
-	vector<Mat> vImgHog(vImg.begin()+7, vImg.begin()+7+9);
+	vector<Mat> vImgHog(vImg.begin() + 7, vImg.begin() + 7 + 9);
 	hog.extractOBin(vImg[1], vImg[2], vImgHog);
 
 	// |I_xx|, |I_yy|
-	Sobel(vImg[0], I_x, CV_16UC1, 2, 0, 3);
-	Sobel(vImg[0], I_y, CV_16UC1, 0, 2, 3);
+	Sobel(vImg[0], I_x, CV_16SC1, 2, 0, 3);
+	Sobel(vImg[0], I_y, CV_16SC1, 0, 2, 3);
 
 	convertScaleAbs( I_x, vImg[5], 0.25);
 	convertScaleAbs( I_y, vImg[6], 0.25);
 
 	// L, a, b
 	cvtColor(img, img, CV_RGB2Lab);
-	split(img, vector<Mat>(vImg.begin(), vImg.begin()+3));
+	split(img, vector<Mat>(vImg.begin(), vImg.begin() + 3));
 
 
 	// depth image
@@ -157,40 +157,40 @@ void CRPatch::extractFeatureChannels(Mat &img, Mat &depth_img, std::vector<Mat> 
 void CRPatch::maxfilt(Mat &src, unsigned int width) {
 
 	for (int  y = 0; y < src.rows; y++)
-		maxfilt(src.data + y*src.step[0], src.step[1], src.cols, width);
+		maxfilt(src.data + y * src.step[0], src.step[1], src.cols, width);
 
 	for (int  x = 0; x < src.cols; x++)
-		maxfilt(src.data + x*src.step[1], src.step[0], src.rows, width);
+		maxfilt(src.data + x * src.step[1], src.step[0], src.rows, width);
 
 }
 
 void CRPatch::maxfilt(Mat &src, Mat &dst, unsigned int width) {
 
 	for (int  y = 0; y < src.rows; y++)
-		maxfilt(src.data + y*src.step[0], dst.data + y*dst.step[0], src.step[1], src.cols, width);
+		maxfilt(src.data + y * src.step[0], dst.data + y * dst.step[0], src.step[1], src.cols, width);
 
 	for (int  x = 0; x < src.cols; x++)
-		maxfilt(src.data + x*src.step[1], src.step[0], src.rows, width);
+		maxfilt(src.data + x * src.step[1], src.step[0], src.rows, width);
 
 }
 
 void CRPatch::minfilt(Mat &src, unsigned int width) {
 
 	for (int  y = 0; y < src.rows; y++)
-		minfilt(src.data + y*src.step[0], src.step[1], src.cols, width);
+		minfilt(src.data + y * src.step[0], src.step[1], src.cols, width);
 
 	for (int  x = 0; x < src.cols; x++)
-		minfilt(src.data + x*src.step[1], src.step[0], src.rows, width);
+		minfilt(src.data + x * src.step[1], src.step[0], src.rows, width);
 
 }
 
 void CRPatch::minfilt(Mat &src, Mat &dst, unsigned int width) {
 
 	for (int  y = 0; y < src.rows; y++)
-		minfilt(src.data + y*src.step[0], dst.data + y*dst.step[0], src.step[1], src.cols, width);
+		minfilt(src.data + y * src.step[0], dst.data + y * dst.step[0], src.step[1], src.cols, width);
 
 	for (int  x = 0; x < src.cols; x++)
-		minfilt(src.data + x*src.step[1], src.step[0], src.rows, width);
+		minfilt(src.data + x * src.step[1], src.step[0], src.rows, width);
 
 }
 
