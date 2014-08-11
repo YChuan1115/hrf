@@ -157,7 +157,7 @@ public:
 	};
 
 	// Regression
-	const LeafNode* regression(uchar** ptFCh) const;
+	const LeafNode* regression(uchar** ptFCh, int stepImg) const;
 
 	// Training
 	void growTree(const CRPatch& TrData, int samples);
@@ -257,7 +257,7 @@ private:
 	CvRNG *cvRNG;
 };
 
-inline const LeafNode* CRTree::regression(uchar** ptFCh) const {
+inline const LeafNode* CRTree::regression(uchar** ptFCh, int stepImg) const {
 	// pointer to the current node first set to the root node
 	//InternalNode* pnode = &nodes[0];
 	
@@ -272,8 +272,8 @@ inline const LeafNode* CRTree::regression(uchar** ptFCh) const {
 		// pointer to channel
 		uchar* ptC = ptFCh[nodes[node].data[4]];
 		// get pixel values 
-		int p1 = ptC[nodes[node].data[0]+nodes[node].data[1]];
-		int p2 = ptC[nodes[node].data[2]+nodes[node].data[3]];
+		int p1 = ptC[nodes[node].data[0]+nodes[node].data[1]*stepImg];
+		int p2 = ptC[nodes[node].data[2]+nodes[node].data[3]*stepImg];
 		// test
 		bool test = ( p1 - p2 ) >= nodes[node].data[5];
 

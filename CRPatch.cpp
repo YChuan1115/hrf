@@ -72,8 +72,8 @@ void CRPatch::extractFeatureChannels(Mat &img, Mat &depth_img, std::vector<Mat> 
 	Mat I_x, I_y;
 
 	// |I_x|, |I_y|
-	Sobel(vImg[0], I_x, CV_16UC1, 1, 0, 3);
-	Sobel(vImg[0], I_y, CV_16UC1, 0, 1, 3);
+	Sobel(vImg[0], I_x, CV_16SC1, 1, 0, 3);
+	Sobel(vImg[0], I_y, CV_16SC1, 0, 1, 3);
 	convertScaleAbs( I_x, vImg[3], 0.25);
 	convertScaleAbs( I_y, vImg[4], 0.25);
 
@@ -112,8 +112,8 @@ void CRPatch::extractFeatureChannels(Mat &img, Mat &depth_img, std::vector<Mat> 
 	hog.extractOBin(vImg[1], vImg[2], vImgHog);
 
 	// |I_xx|, |I_yy|
-	Sobel(vImg[0], I_x, CV_16UC1, 2, 0, 3);
-	Sobel(vImg[0], I_y, CV_16UC1, 0, 2, 3);
+	Sobel(vImg[0], I_x, CV_16SC1, 2, 0, 3);
+	Sobel(vImg[0], I_y, CV_16SC1, 0, 2, 3);
 
 	convertScaleAbs( I_x, vImg[5], 0.25);
 	convertScaleAbs( I_y, vImg[6], 0.25);

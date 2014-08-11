@@ -2,13 +2,16 @@
 // Author: Juergen Gall, BIWI, ETH Zurich
 // Email: gall@vision.ee.ethz.ch
 */
-
 #pragma once
-
-#include "CRTree.h"
 
 #include <vector>
 #include <boost/progress.hpp>
+
+#include "CRTree.h"
+
+using namespace std;
+
+
 
 class CRForest {
 public:
@@ -19,7 +22,7 @@ public:
 		
 	}
 	~CRForest() {
-		for(std::vector<CRTree*>::iterator it = vTrees.begin(); it != vTrees.end(); ++it) delete *it;
+		for(vector<CRTree*>::iterator it = vTrees.begin(); it != vTrees.end(); ++it) delete *it;
 		vTrees.clear();
 	}
 
@@ -28,19 +31,18 @@ public:
 	int GetSize() const {return vTrees.size();}
 	unsigned int GetDepth() const {return vTrees[0]->GetDepth();}
 	unsigned int GetNumLabels() const {return vTrees[0]->GetNumLabels();}
-	void GetClassID(std::vector<std::vector<int> >& id) const;
-	bool GetHierarchy(std::vector<HNode>& hierarchy) const{
+	void GetClassID(vector<vector<int> >& id) const;
+	bool GetHierarchy(vector<HNode>& hierarchy) const{
 		return vTrees[0]->GetHierarchy(hierarchy);
 	}
-	void SetTrainingLabelsForDetection(std::vector<int>& class_selector);
-	void GetTrainingLabelsForDetection(std::vector<int>& class_selector);
+	void SetTrainingLabelsForDetection(vector<int>& class_selector);
+	void GetTrainingLabelsForDetection(vector<int>& class_selector);
 
 	// Regression 
-	void regression(std::vector<const LeafNode*>& result, uchar** ptFCh, float scale_tree = -1.0f) const;
-	void regression(std::vector<const LeafNode*>& result, std::vector<unsigned int>& trID, uchar** ptFCh, CvRNG* pRNG, double thresh ,float scale_tree = -1.0f) const;
+	void regression(vector<const LeafNode*>& result, uchar** ptFCh, int stepImg) const;
 
 	// Training
-	void trainForest(int min_s, int max_d, CvRNG* pRNG, const CRPatch& TrData, int samples, std::vector<int>& id, float scale_tree = 1.0f);
+	void trainForest(int min_s, int max_d, CvRNG* pRNG, const CRPatch& TrData, int samples, vector<int>& id, float scale_tree = 1.0f);
 
 	// IO functions
 	void saveForest(const char* filename, unsigned int offset = 0);
@@ -48,10 +50,10 @@ public:
 	void loadHierarchy(const char* hierarchy, unsigned int offset=0);
 
 	// Trees
-	std::vector<CRTree*> vTrees;
+	vector<CRTree*> vTrees;
 
 	// training labels to use for detection
-	std::vector<int>  use_labels;
+	vector<int>  use_labels;
 
    // skipping training 
 	bool do_skip;
@@ -64,17 +66,17 @@ public:
 };
 
 // Matching 
-inline void CRForest::regression(std::vector<const LeafNode*>& result, uchar** ptFCh, float scale_tree) const {
+inline void CRForest::regression(vector<const LeafNode*>& result, uchar** ptFCh, int stepImg) const {
 	// if scale_tree == -1.0f -> process all the trees
 	result.resize( vTrees.size() );
 	for(int i=0; i<(int)vTrees.size(); ++i) {
-		result[i] = vTrees[i]->regression(ptFCh);
+		result[i] = vTrees[i]->regression(ptFCh, stepImg);
 	}
 }
 
 //Training
-inline void CRForest::trainForest(int min_s, int max_d, CvRNG* pRNG, const CRPatch& TrData, int samples, std::vector<int>& id, float scale_tree) {
-	std::cout << "start training ..." << std::endl;
+inline void CRForest::trainForest(int min_s, int max_d, CvRNG* pRNG, const CRPatch& TrData, int samples, vector<int>& id, float scale_tree) {
+	cout << "start training ..." << endl;
 	boost::progress_display show_progress( vTrees.size() );
 	
 	for(int i=0; i < (int)vTrees.size(); ++i) {
@@ -115,35 +117,35 @@ inline void CRForest::loadHierarchy(const char* hierarchy, unsigned int offset){
 	int cccc =0;
 	for (unsigned int i=offset; i < vTrees.size() + offset; ++i,++cccc){
 		if(!(vTrees[cccc]->loadHierarchy(hierarchy))){
-			std::cerr<< "failed to load the hierarchy: " << hierarchy << std::endl;
+			cerr<< "failed to load the hierarchy: " << hierarchy << endl;
 		}else{
-			std::cout<< "loaded the hierarchy: " << hierarchy << std::endl;
+			cout<< "loaded the hierarchy: " << hierarchy << endl;
 		}
 	}
 }
 
 
 // Get/Set functions 
-inline void CRForest::GetClassID(std::vector<std::vector<int> >& id) const {
+inline void CRForest::GetClassID(vector<vector<int> >& id) const {
   id.resize(vTrees.size());
   for(unsigned int i=0; i<vTrees.size(); ++i) {
     vTrees[i]->getClassId(id[i]);
   }  
 }
 
-inline void CRForest::SetTrainingLabelsForDetection(std::vector<int>& class_selector){
+inline void CRForest::SetTrainingLabelsForDetection(vector<int>& class_selector){
 	int nlabels = GetNumLabels();
 	if (class_selector.size()==1 && class_selector[0]==-1){
 		use_labels.resize(nlabels);
-		std::cout<< nlabels << " labels used for detections:" << std::endl;
+		cout<< nlabels << " labels used for detections:" << endl;
 		for (unsigned int i=0; i < nlabels; i++){
 			use_labels[i] = 1;
-	//		std::cout << " label " << i << " : " << use_labels[i] << std::endl; 
+	//		cout << " label " << i << " : " << use_labels[i] << endl; 
 		}
 	}else{
 		if ((unsigned int)(nlabels)!= class_selector.size()){
-			std::cerr<< "nlabels: " << nlabels << " class_selector.size(): " << class_selector.size() << std::endl; 
-			std::cerr<< "CRForest.h: the number of labels does not match the number of elements in the class_selector" << std::endl;
+			cerr<< "nlabels: " << nlabels << " class_selector.size(): " << class_selector.size() << endl; 
+			cerr<< "CRForest.h: the number of labels does not match the number of elements in the class_selector" << endl;
 			return;
 		}
 		use_labels.resize(class_selector.size());
@@ -154,7 +156,7 @@ inline void CRForest::SetTrainingLabelsForDetection(std::vector<int>& class_sele
 		
 }
 
-inline void CRForest::GetTrainingLabelsForDetection(std::vector<int>& class_selector){ 
+inline void CRForest::GetTrainingLabelsForDetection(vector<int>& class_selector){ 
 	class_selector.resize(use_labels.size());
 	for (unsigned int i=0; i< use_labels.size(); i++)
 		class_selector[i] = use_labels[i];

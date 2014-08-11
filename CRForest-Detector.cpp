@@ -418,7 +418,7 @@ void run_train() {
 
 	// Init random generator
 	time_t t = time(NULL);
-	int seed = (int)(t / double(off_tree + 1));
+	int seed = 1407685013;//(int)(t / double(off_tree + 1));
 
 	CvRNG cvRNG(seed);
 
@@ -664,10 +664,7 @@ void detect(CRForestDetector &crDetect) {
 				}
 			}
 
-			int pstart = clock();
-
 			// preparing the variables
-
 			int nlabels = crDetect.GetNumLabels();
 			vector<float> max_heights(nlabels, 0.0f);
 			vector<float> max_widths(nlabels, 0.0f);
@@ -683,7 +680,6 @@ void detect(CRForestDetector &crDetect) {
 			// after reading the images and check the already detected candidates
 
 			//1. assign the right clusters to them
-			int tstart = clock();
 			vector<vector<Mat> > vImgAssign;
 			crDetect.fullAssignCluster(img, depth_img, vImgAssign, scales);
 			vector<vector<float> > candidates;
@@ -696,7 +692,6 @@ void detect(CRForestDetector &crDetect) {
 			long int nvotes_class = 0;
 			long int nvotes_oldclass = 0;
 
-			tstart = clock();
 			std::vector<long int> nvotes_per_class(nlabels - 1, 0);
 
 			for (unsigned int cNr = 0; cNr < nlabels - 1; cNr++) {
@@ -744,7 +739,6 @@ void detect(CRForestDetector &crDetect) {
 			}
 
 			//initializing the file for the candidates
-			tstart = clock();
 			std::vector< std::vector<float> > boundingboxes(candidates.size());
 			for (unsigned int candNr = 0; candNr < candidates.size(); candNr++) {
 				int scNr = 0;

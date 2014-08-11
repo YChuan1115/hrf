@@ -3,9 +3,11 @@
 #include "Candidate.h"
 
 using namespace cv;
+using namespace std;
 
 
-Candidate::Candidate(const CRForest *crForest, Mat &img, std::vector<float> candidate, int candNr, bool do_bpr) {
+
+Candidate::Candidate(const CRForest *crForest, Mat &img, vector<float> candidate, int candNr, bool do_bpr) {
 
 	bpr = do_bpr;
 
@@ -24,21 +26,17 @@ Candidate::Candidate(const CRForest *crForest, Mat &img, std::vector<float> cand
 
 	if (bpr) {
 		// initialize the backprojection mask
-		backproj_mask = Mat::zeros(img.cols * scale + 0.5, img.rows * scale + 0.5, CV_32FC1);
+		backproj_mask = Mat::zeros(Size(img.cols * scale + 0.5, img.rows * scale + 0.5), CV_32FC1);
 	}
 
 }
 
 
 void Candidate::getBBfromBpr(int thresh, bool do_sym) {
-	// structure for storing the bounding box
-	bb.resize(4);// MIN_X MIN_Y MAX_X MAX_Y
+	bb.resize(4);
+	Mat mask_thresh, backproj_mask_smooth;
 
-	// initialize the thresholded image
-	Mat mask_thresh = Mat::zeros(backproj_mask.cols, backproj_mask.rows, CV_8UC1);
-
-	// make the smoothed image
-	Mat backproj_mask_smooth = backproj_mask.clone();
+	// smooth backprojection mask
 	blur(backproj_mask, backproj_mask_smooth, Size(9, 9));
 
 	// get the maximum and minimum values in the backprojection mask
@@ -56,7 +54,7 @@ void Candidate::getBBfromBpr(int thresh, bool do_sym) {
 	int min_x = backproj_mask.cols, min_y = backproj_mask.rows, max_x = -1, max_y = -1;
 
 	for (int y_ind = 0; y_ind < mask_thresh.rows ; ++y_ind) {
-		uchar *ptr = mask_thresh.ptr<uchar>(y_ind);
+		float *ptr = mask_thresh.ptr<float>(y_ind);
 		for ( int x_ind = 0; x_ind < mask_thresh.cols; ++x_ind) {
 			if (ptr[x_ind] > 0) {
 				if (y_ind > max_y)
@@ -73,8 +71,8 @@ void Candidate::getBBfromBpr(int thresh, bool do_sym) {
 
 	// symmetrizing the box about the center if asked for
 	if (do_sym) {
-		float half_height = std::max(y - min_y + 1, max_y - y + 1);
-		float half_width = std::max(x - min_x + 1, max_x - x + 1);
+		float half_height = max(y - min_y + 1, max_y - y + 1);
+		float half_width = max(x - min_x + 1, max_x - x + 1);
 		min_x = x - half_width;
 		max_x = x + half_width;
 		min_y = y - half_height;
