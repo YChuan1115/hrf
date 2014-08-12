@@ -5,6 +5,7 @@ set(CMAKE_BUILD_TYPE Release)
 
 
 find_package(PCL 1.7 REQUIRED)
+find_package(Boost 1.56.0 REQUIRED)
 #find_package(OpenCV REQUIRED)
 #find_package(Eigen3 3.2 REQUIRED)
 
@@ -17,8 +18,13 @@ set(OpenCV_LIBS "opencv_core;opencv_highgui;opencv_imgproc;opencv_gpu;opencv_obj
 # custom Eigen3
 set(EIGEN_INCLUDE_DIRS "/home/stfn/libs/eigen3.2.1")
 
+# custom Boost
+set (BOOST_INCLUDE_DIRS "/home/stfn/libs/boost_1_56_0")
+set (BOOST_LIBRARY_DIRS "/home/stfn/libs/boost_1_56_0/stage/lib")
+set (BOOST_LIBS "boost_timer")
 
 include_directories(
+	${BOOST_INCLUDE_DIRS}
 	${PCL_INCLUDE_DIRS}
 	${OpenCV_INCLUDE_DIRS}
 	${EIGEN_INCLUDE_DIRS}
@@ -26,6 +32,7 @@ include_directories(
 
 link_directories(${PCL_LIBRARY_DIRS})
 link_directories(${OpenCV_LIBRARY_DIRS})
+link_directories(${BOOST_LIBRARY_DIRS})
 add_definitions(${PCL_DEFINITIONS})
 
 
@@ -38,6 +45,7 @@ add_executable (myhog myhog.cpp HoG.cpp GpuHoG.cpp)
 target_link_libraries (CRForest-Detector 
 	${PCL_LIBRARIES}
 	${OpenCV_LIBS}
+	${BOOST_LIBS}
 )
 
 target_link_libraries (untitled 

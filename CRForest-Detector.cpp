@@ -5,6 +5,7 @@
 //
 //
 
+#include <boost/progress.hpp>
 
 #include <fstream>
 #include <iostream>
@@ -563,9 +564,10 @@ void detect(CRForestDetector &crDetect) {
 
 
 		// Run detector for each image
-		boost::progress_display show_progress( file_test_num - off_test );
+		boost::progress_display pd( file_test_num - off_test );
 		for (int i = off_test; i < off_test + file_test_num; ++i) {
-			++show_progress;
+			++pd;
+			boost::progress_timer pt;
 
 			if (i >= vFilenames[tcNr].size())
 				continue;

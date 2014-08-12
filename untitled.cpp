@@ -1,6 +1,7 @@
 #include <cxcore.h>
 #include <cv.h>
 #include <highgui.h>
+#include "opencv2/gpu/gpu.hpp"
 #include <boost/progress.hpp>
 
 #include "HoG.cpp"
@@ -11,14 +12,40 @@ using namespace cv;
 
 int main(int argc, char const *argv[]) {
 
+	cv::gpu::printShortCudaDeviceInfo(cv::gpu::getDevice());
 
-	Mat img = imread("/home/stfn/dev/rgbd-dataset/rgbd-dataset/cereal_box/cereal_box_1/cereal_box_1_1_1_crop.png");
-	Mat framed_img;
-	copyMakeBorder(img, framed_img, 0, 30, 0, 50, BORDER_REPLICATE);
+	//Mat img = imread("/home/stfn/dev/rgbd-dataset/rgbd-dataset/cereal_box/cereal_box_1/cereal_box_1_1_1_crop.png");
+	Mat img = imread("/home/stfn/dev/rgbd-dataset/rgbd-scenes/background/background_10/background_10_1.png");
+	Mat img_gray;
+	cvtColor(img, img_gray, CV_BGR2GRAY);
 
-	imshow("f", framed_img);
-	imshow("img", img);
-	waitKey();
+	{
+		boost::progress_timer t;
+		gpu::GpuMat gpu_img(img_gray);
+		double min,max;
+		Point minP, maxP;
+		for (int i = 0; i < 10000; ++i) {
+			gpu::minMaxLoc(gpu_img, &min, &max, &minP, &maxP);
+			gpu::GpuMat gpu_img_roi(gpu_img, Rect(maxP.x,maxP.y,1,1));
+			gpu_img_roi = Scalar(0);
+		}
+		Mat img_back = Mat(gpu_img);
+		cout << "gpu del roi: ";
+	}
+
+	{
+		boost::progress_timer t;
+		Mat img_clone = img_gray.clone();
+		double min,max;
+		Point minP, maxP;
+		for (int i = 0; i < 10000; ++i) {
+			minMaxLoc(img_clone, &min, &max, &minP, &maxP);
+			Mat img_roi(img_clone, Rect(maxP.x,maxP.y,1,1));
+			img_roi = Scalar(0);
+		}
+		Mat img_back = img_clone.clone();
+		cout << "cpu del roi: ";
+	}
 
 
 
