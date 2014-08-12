@@ -11,7 +11,7 @@
 #include "CRForestDetector.h"
 #include <vector>
 #include <highgui.h>
-#include "opencv2/gpu/gpu.hpp"
+#include <algorithm>
 
 
 using namespace std;
@@ -179,20 +179,18 @@ void CRForestDetector::detectPeaks(vector<vector<float> > &candidates, vector<ve
 		default_class = this_class;
 
 	// smoothing the accumulator matrix
-	vector<vector<gpu::GpuMat> > smoothAcc;
+	vector<vector<Mat> > smoothAcc;
 	smoothAcc.resize(scales.size());
 	for (unsigned int scNr = 0; scNr < scales.size(); ++scNr) {
 		int adapKwidth = int(kernel_width * scales[scNr] / 2.0f) * 2 + 1;
-		adapKwidth = (adapKwidth > 31)? 31 : adapKwidth;
 		float adapKstd  = kernel_std * scales[scNr];
 
 		smoothAcc[scNr].resize(imgDetect[scNr].size());
 		for (unsigned int cNr = 0; cNr < imgDetect[scNr].size(); ++cNr) {
 			if ((this_class >= 0) && ( this_class != cNr))
 				continue;
-			gpu::GpuMat tmp(imgDetect[scNr][cNr]);
-			GaussianBlur(tmp, smoothAcc[scNr][cNr], Size(adapKwidth, adapKwidth), adapKstd);
-			tmp.release();
+
+			GaussianBlur(imgDetect[scNr][cNr], smoothAcc[scNr][cNr], Size(adapKwidth, adapKwidth), adapKstd);
 		}
 	}
 
@@ -223,7 +221,7 @@ void CRForestDetector::detectPeaks(vector<vector<float> > &candidates, vector<ve
 				if ((this_class >= 0) && ( this_class != cNr))
 					continue;
 
-				gpu::minMaxLoc(smoothAcc[scNr][cNr], &min_val_temp, &max_val_temp, &min_loc_temp, &max_loc_temp);
+				minMaxLoc(smoothAcc[scNr][cNr], &min_val_temp, &max_val_temp, &min_loc_temp, &max_loc_temp);
 				if ( (max_val_temp >= threshold) && (max_val_temp > max_position[0]) ) {
 					flag = true;
 					max_position[0] = max_val_temp;
