@@ -3,6 +3,8 @@
 // Email: gall@vision.ee.ethz.ch
 */
 
+#pragma once
+
 
 #include <cxcore.h>
 #include <vector>

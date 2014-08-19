@@ -1,5 +1,3 @@
-#pragma once
-
 #include "Candidate.h"
 
 using namespace cv;

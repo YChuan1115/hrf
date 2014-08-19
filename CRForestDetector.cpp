@@ -1,32 +1,28 @@
-/*
-// C++ Implementation CRForestDetector
-//
-// Description: The detector implementation.
-//
-// Author: Nima Razavi, BIWI, ETH Zurich
-// Email: nrazavi@vision.ee.ethz.ch
-*/
-#pragma once
-
 #include "CRForestDetector.h"
+#include "LoadBalancer.h"
+
+#define timer fubar
+#include <boost/progress.hpp>
+#undef timer
+#include <boost/timer/timer.hpp>
+
 #include <vector>
-#include <highgui.h>
 #include <algorithm>
+
+#include <highgui.h>
 
 
 using namespace std;
 
+
 int COUNT;
 
 // given the cluster assignment images, we are voting into the voting space vImgDetect
-void CRForestDetector::voteColor(vector<Mat> &vImgAssign, vector<Mat> &vImgDetect, float xShift, float yShift, int this_class, Rect &focus, float prob_threshold, vector<Mat> &classProbs, long int &nvotes) {
+void CRForestDetector::voteColor(vector<Mat> &vImgAssign, vector<Mat> &vImgDetect, vector<Mat> &classProbs, float xShift, float yShift, int this_class, Rect &focus, float prob_threshold) {
 	// vImgDetect are all initialized before
 
 	if (vImgAssign.size() < 1)
 		return;
-	bool do_count = true;
-	if (nvotes < 0)
-		do_count = false;
 
 	// compensate for the shift based on the
 	if (xShift < 0)
@@ -74,10 +70,6 @@ void CRForestDetector::voteColor(vector<Mat> &vImgAssign, vector<Mat> &vImgDetec
 							int x = int(float(cx) - float((*it).x) + 0.5 + xShift);
 							int y = int(float(cy) - float((*it).y) + 0.5 + yShift);
 
-							if (do_count) {
-								nvotes++;
-							}
-
 							// finally vote into voting space
 							if (focus.width == 0) {
 								if (y >= 0 && y < vImgDetect[lNr].rows && x >= 0 && x < vImgDetect[lNr].cols) {
@@ -96,7 +88,7 @@ void CRForestDetector::voteColor(vector<Mat> &vImgAssign, vector<Mat> &vImgDetec
 
 
 // Gathering the information in the support of each candidate
-void CRForestDetector::voteForCandidate(vector<Mat> &vImgAssign, Candidate &cand, int kernel_width, vector<float> &ratios, float max_width, float max_height ) {
+void CRForestDetector::voteForCandidate(vector<Mat> &vImgAssign, Candidate &cand, int kernel_width, float max_width, float max_height ) {
 
 	if (vImgAssign.size() < 1)
 		return;
@@ -136,8 +128,8 @@ void CRForestDetector::voteForCandidate(vector<Mat> &vImgAssign, Candidate &cand
 			for (unsigned int cx = min_x; cx < max_x; ++cx) {
 
 				value = cvRandReal(&pRNG);
-				
-				if (value < sample_votes || ptr[cx] <0)
+
+				if (value < sample_votes || ptr[cx] < 0)
 					continue;
 
 				LeafNode *tmp = crForest->vTrees[trNr]->getLeaf(ptr[cx]);
@@ -149,7 +141,7 @@ void CRForestDetector::voteForCandidate(vector<Mat> &vImgAssign, Candidate &cand
 				int idNr = 0;
 				vector<float>::const_iterator itW = tmp->vCenterWeights[cand.c].begin();
 				for (vector<Point>::const_iterator it = tmp->vCenter[cand.c].begin() ; it != tmp->vCenter[cand.c].end(); ++it, ++idNr, itW++) {
-					int x = int(float(cx) - float((*it).x) * ratios[cand.r] + 0.5);
+					int x = int(float(cx) - float((*it).x) + 0.5);
 					int y = int(float(cy) - float((*it).y) + 0.5);
 					if (isInsideKernel2D(x, y, cand_x, cand_y , kernel_width)) {
 						w_element += w * (*itW);
@@ -282,8 +274,11 @@ void CRForestDetector::detectPeaks(vector<vector<float> > &candidates, vector<ve
 	}
 }
 
-void CRForestDetector::detectPyramidMR(vector<vector<Mat> > &vImgAssign, vector<vector<float> > &candidates, vector<float> &scales, vector<float> &ratios, vector<float> kernel_width , int max_cands, int this_class, float threshold, float prob_threshold, vector<vector<Mat> > &classProbs, long int &nvotes) {
-
+void CRForestDetector::detectPyramidMR(vector<vector<Mat> > &vImgAssign, vector<vector<float> > &candidates, vector<float> &scales, vector<float> &kernel_width, vector<float> &params, vector<vector<Mat> > &classProbs) {
+	int max_cands = params[0];
+	int this_class = params[1];
+	float threshold = params[2];
+	float prob_threshold = params[3];
 
 	vector<vector<Mat> > vvImgDetect(vImgAssign.size());
 
@@ -298,7 +293,7 @@ void CRForestDetector::detectPyramidMR(vector<vector<Mat> > &vImgAssign, vector<
 			vvImgDetect[scNr][lNr] = Mat::zeros(Size(vImgAssign[scNr][0].cols * 2.0f + 0.5, vImgAssign[scNr][0].rows * 2.0f + 0.5), CV_32FC1);
 		}
 
-		voteColor(vImgAssign[scNr], vvImgDetect[scNr], -1, -1, this_class, default_rect, prob_threshold, classProbs[scNr], nvotes);
+		voteColor(vImgAssign[scNr], vvImgDetect[scNr], classProbs[scNr], -1, -1, this_class, default_rect, prob_threshold);
 	}
 
 
@@ -360,20 +355,22 @@ void CRForestDetector::assignCluster(Mat &img, Mat &depth_img, vector<Mat> &vImg
 	} // end for y
 }
 
-// Multi-scale cluster assignment into vvImgAssign.
+
 void CRForestDetector::fullAssignCluster(Mat &img, Mat &depth_img, vector<vector<Mat> > &vvImgAssign, vector<float> &scales) {
 
-	vvImgAssign.resize(scales.size());
-
+	LoadBalancer lb;
 	int ntrees = crForest->vTrees.size();
 	Scalar vvImgAssignValue(-1.0);
+	vector<Mat> img_scaled(scales.size());
+	vector<Mat> depth_scaled(scales.size());
+
+	vvImgAssign.resize(scales.size());
 
 	for (unsigned int scaleNr = 0; scaleNr < scales.size(); scaleNr++) {
 		vvImgAssign[scaleNr].resize(ntrees);
 		// rescaling the image to scales[scaleNr]
-		Mat cLevel, dcLevel;
-		resize( img, cLevel, Size(img.cols * scales[scaleNr] + 0.5, img.rows * scales[scaleNr] + 0.5), 0, 0, CV_INTER_LINEAR );
-		resize( depth_img, dcLevel, Size(depth_img.cols * scales[scaleNr] + 0.5, depth_img.rows * scales[scaleNr] + 0.5), 0, 0, CV_INTER_NN );
+		resize( img, img_scaled[scaleNr], Size(img.cols * scales[scaleNr] + 0.5, img.rows * scales[scaleNr] + 0.5), 0, 0, CV_INTER_LINEAR );
+		resize( depth_img, depth_scaled[scaleNr], Size(depth_img.cols * scales[scaleNr] + 0.5, depth_img.rows * scales[scaleNr] + 0.5), 0, 0, CV_INTER_NN );
 
 		//looping over the trees in the forest
 		for (int treeNr = 0; treeNr < ntrees; treeNr++) {
@@ -381,16 +378,19 @@ void CRForestDetector::fullAssignCluster(Mat &img, Mat &depth_img, vector<vector
 			vvImgAssign[scaleNr][treeNr] = vvImgAssignValue;
 		}
 
-		assignCluster(cLevel, dcLevel, vvImgAssign[scaleNr], scales[scaleNr]);
+		boost::function<void(void)> job_func = boost::bind(&CRForestDetector::assignCluster, this, boost::ref(img_scaled[scaleNr]), boost::ref(depth_scaled[scaleNr]), boost::ref(vvImgAssign[scaleNr]), boost::ref(scales[scaleNr]));
+		lb.add_job(job_func);
 	}
+
+	lb.start_jobs();
 }
 
 
-// ************************************** CLASS CONFIDENCES ****************************************** //
-
 // Getting the per class confidences TODO: this has to become scalable
 void CRForestDetector::getClassConfidence(vector<vector<Mat> > &vImgAssign, vector<vector<Mat> > &classConfidence) {
+	LoadBalancer lb;
 	int nlabels = crForest->GetNumLabels();
+
 	// allocating space for the classConfidence
 	classConfidence.resize(vImgAssign.size());
 	for (unsigned int i = 0; i < vImgAssign.size(); i++) {
@@ -402,53 +402,55 @@ void CRForestDetector::getClassConfidence(vector<vector<Mat> > &vImgAssign, vect
 
 	// looping over the scales
 	for (unsigned int scNr = 0; scNr < vImgAssign.size(); ++scNr) {
+		boost::function<void(void)> job_func = boost::bind(&CRForestDetector::getClassConfidencePerScale, this, boost::ref(vImgAssign[scNr]), boost::ref(classConfidence[scNr]), nlabels);
+		lb.add_job(job_func);
+	}
 
-		int w = vImgAssign[scNr][0].cols;
-		int h = vImgAssign[scNr][0].rows;
+	lb.start_jobs();
+}
 
-		// function variables
-		int outer_window = 8; // TODO: this parameter shall move to the inputs.
-		float inv_tree = 1.0f / vImgAssign[scNr].size();
+void CRForestDetector::getClassConfidencePerScale(vector<Mat> &vImgAssign, vector<Mat> &classConfidence, int nlabels) {
+	// TODO: why the tmpClassProbs?
 
-		for (int trNr = 0; trNr < vImgAssign[scNr].size() ; trNr++) {
-			// here make a temporary structure of all the probabilities and then smooth it with a kernel.
-			vector<Mat> tmpClassProbs(nlabels);
-			for (int cNr = 0; cNr < nlabels; ++cNr) {
-				tmpClassProbs[cNr] = Mat::zeros(Size(vImgAssign[scNr][trNr].cols, vImgAssign[scNr][trNr].rows), CV_32FC1);
-			}
+	int w = vImgAssign[0].cols;
+	int h = vImgAssign[0].rows;
 
-			for (unsigned int y = 0; y < h ; ++y) {
-				for (unsigned int x = 0; x < w; ++x) {
-					int leaf_id = vImgAssign[scNr][trNr].ptr<float>(y)[x];
-					if (leaf_id < 0)
-						continue;
+	// function variables
+	int outer_window = 8; // TODO: this parameter shall move to the inputs.
+	float inv_tree = 1.0f / vImgAssign.size();
 
-					LeafNode *tmp = crForest->vTrees[trNr]->getLeaf(leaf_id);
+	// looping over the trees
+	for (int trNr = 0; trNr < vImgAssign.size() ; trNr++) {
+		// here make a temporary structure of all the probabilities and then smooth it with a kernel.
+		vector<Mat> tmpClassProbs(nlabels);
+		for (int cNr = 0; cNr < nlabels; ++cNr) {
+			tmpClassProbs[cNr] = Mat::zeros(Size(vImgAssign[trNr].cols, vImgAssign[trNr].rows), CV_32FC1);
+		}
 
-					for (int cNr = 0; cNr < nlabels; ++cNr) {
-						tmpClassProbs[cNr].ptr<float>(y)[x] = tmp->vPrLabel[cNr] * inv_tree;
-					}
+		for (unsigned int y = 0; y < h ; ++y) {
+			for (unsigned int x = 0; x < w; ++x) {
+				int leaf_id = vImgAssign[trNr].ptr<float>(y)[x];
+				if (leaf_id < 0)
+					continue;
+
+				LeafNode *tmp = crForest->vTrees[trNr]->getLeaf(leaf_id);
+
+				for (int cNr = 0; cNr < nlabels; ++cNr) {
+					tmpClassProbs[cNr].ptr<float>(y)[x] = tmp->vPrLabel[cNr] * inv_tree;
 				}
 			}
+		}
 
-			//SMOOTHING AND SCALING IF NECESSARY
-			double scaleFactor = 1.0;
-			if ( sample_points >= 0 ) {
-				scaleFactor = 1.0 / (1.0 - sample_points);
-			}
-			// now values of the tmpClassProbs are set we can blur it to get the average
-			for (int cNr = 0; cNr < nlabels; cNr++) {
-				blur(tmpClassProbs[cNr], tmpClassProbs[cNr], Size(outer_window, outer_window));
-				// to account for the subsampling
-				resize(tmpClassProbs[cNr], tmpClassProbs[cNr], Size(), scaleFactor, scaleFactor);
-			}
+		// now values of the tmpClassProbs are set we can blur it to get the average
+		for (int cNr = 0; cNr < nlabels; cNr++) {
+			blur(tmpClassProbs[cNr], tmpClassProbs[cNr], Size(outer_window, outer_window));
+		}
 
-			for (int cNr = 0; cNr < nlabels; cNr++) {
-				//  LOOPING OVER ALL PIXELS
-				for (int y = 0; y < h; y++) {
-					for (int x = 0 ; x < w; x++) {
-						classConfidence[scNr][cNr].ptr<float>(y)[x] += tmpClassProbs[cNr].ptr<float>(y)[x];
-					}
+		for (int cNr = 0; cNr < nlabels; cNr++) {
+			//  LOOPING OVER ALL PIXELS
+			for (int y = 0; y < h; y++) {
+				for (int x = 0 ; x < w; x++) {
+					classConfidence[cNr].ptr<float>(y)[x] += tmpClassProbs[cNr].ptr<float>(y)[x];
 				}
 			}
 		}

@@ -1,16 +1,16 @@
-/* 
-// Author: Juergen Gall, BIWI, ETH Zurich
-// Email: gall@vision.ee.ethz.ch
-*/
 #pragma once
-
-#include <vector>
-#include <boost/progress.hpp>
 
 #include "CRTree.h"
 
-using namespace std;
+#define timer fubar
+#include <boost/progress.hpp>
+#undef timer
+#include <boost/timer/timer.hpp>
 
+#include <vector>
+
+
+using namespace std;
 
 
 class CRForest {
