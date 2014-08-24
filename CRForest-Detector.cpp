@@ -526,7 +526,9 @@ void hacky_candidate_parallelization(vector<vector<float> > &candidates, CRFores
 	int max_width = params[2];
 	int max_height = params[3];
 	bool do_bpr = true;
-	int scNr = candidates[candNr][3];
+	int scNr = 0;
+	while(candidates[candNr][3] != scales[scNr])
+		scNr++;
 
 	Candidate cand(crDetect.GetCRForest(), img, candidates[candNr], candNr, do_bpr);
 	crDetect.voteForCandidate(vImgAssign[scNr], cand, kernel_width, max_width, max_height);
@@ -687,11 +689,17 @@ void detect(CRForestDetector &crDetect) {
 			//1. assign the right clusters to them
 			vector<vector<Mat> > vImgAssign;
 			crDetect.fullAssignCluster(img, depth_img, vImgAssign, scales);
+			cout << "fullAssignCluster()  ";
+			at.report();
+			at.start();
 			vector<vector<float> > candidates;
 
 			vector<vector<Mat> > classConfidence;
 
 			crDetect.getClassConfidence(vImgAssign, classConfidence);
+			cout << "getClassConfidence()  ";
+			at.report();
+			at.start();
 
 			// hacky for the multi threading
 			LoadBalancer lb;
@@ -718,6 +726,9 @@ void detect(CRForestDetector &crDetect) {
 			}
 
 			lb.start_jobs();
+			cout << "detectPyramidMR()  ";
+			at.report();
+			at.start();
 
 			// add candidates
 			for (unsigned int cNr = 0; cNr < nlabels - 1; cNr++) {
@@ -746,6 +757,9 @@ void detect(CRForestDetector &crDetect) {
 				}
 
 			}
+			cout << "cand_sort()  ";
+			at.report();
+			at.start();
 
 			//initializing the file for the candidates
 			vector< vector<float> > boundingboxes(candidates.size());
@@ -758,7 +772,10 @@ void detect(CRForestDetector &crDetect) {
 				boost::function<void(void)> job_func = boost::bind(hacky_candidate_parallelization, boost::ref(candidates), boost::ref(crDetect), boost::ref(img), boost::ref(vImgAssign), boost::ref(boundingboxes), params);
 				lb.add_job(job_func);
 			}
+			cout << "bb generation  ";
 			lb.start_jobs();
+			at.report();
+			at.start();
 
 			// printing the candidate file
 			sprintf_s(buffer, "%s/candidates.txt", buffer2);
@@ -782,6 +799,8 @@ void detect(CRForestDetector &crDetect) {
 				fp_boxes << boundingboxes[boxNr][0] << " " << boundingboxes[boxNr][1] << " " << boundingboxes[boxNr][2] << " " << boundingboxes[boxNr][3] << endl;
 			}
 			fp_boxes.close();
+
+			cout << "printing";
 		}
 	}
 }

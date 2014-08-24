@@ -6,13 +6,15 @@
 #undef timer
 #include <boost/timer/timer.hpp>
 
-#include <vector>
-#include <algorithm>
-
 #include <highgui.h>
+#include "opencv2/gpu/gpu.hpp"
+
+#include <vector>
 
 
 using namespace std;
+using namespace cv;
+
 
 
 int COUNT;
@@ -171,7 +173,7 @@ void CRForestDetector::detectPeaks(vector<vector<float> > &candidates, vector<ve
 		default_class = this_class;
 
 	// smoothing the accumulator matrix
-	vector<vector<Mat> > smoothAcc;
+	vector<vector<gpu::GpuMat> > smoothAcc;
 	smoothAcc.resize(scales.size());
 	for (unsigned int scNr = 0; scNr < scales.size(); ++scNr) {
 		int adapKwidth = int(kernel_width * scales[scNr] / 2.0f) * 2 + 1;
@@ -181,8 +183,11 @@ void CRForestDetector::detectPeaks(vector<vector<float> > &candidates, vector<ve
 		for (unsigned int cNr = 0; cNr < imgDetect[scNr].size(); ++cNr) {
 			if ((this_class >= 0) && ( this_class != cNr))
 				continue;
-
-			GaussianBlur(imgDetect[scNr][cNr], smoothAcc[scNr][cNr], Size(adapKwidth, adapKwidth), adapKstd);
+			gpu::GpuMat gpu_imgDetect(imgDetect[scNr][cNr]);
+			if (adapKwidth > 31) {
+				adapKwidth = 31;
+			}
+			gpu::GaussianBlur(gpu_imgDetect, smoothAcc[scNr][cNr], Size(adapKwidth, adapKwidth), adapKstd);
 		}
 	}
 
@@ -213,7 +218,7 @@ void CRForestDetector::detectPeaks(vector<vector<float> > &candidates, vector<ve
 				if ((this_class >= 0) && ( this_class != cNr))
 					continue;
 
-				minMaxLoc(smoothAcc[scNr][cNr], &min_val_temp, &max_val_temp, &min_loc_temp, &max_loc_temp);
+				gpu::minMaxLoc(smoothAcc[scNr][cNr], &min_val_temp, &max_val_temp, &min_loc_temp, &max_loc_temp);
 				if ( (max_val_temp >= threshold) && (max_val_temp > max_position[0]) ) {
 					flag = true;
 					max_position[0] = max_val_temp;
@@ -293,12 +298,15 @@ void CRForestDetector::detectPyramidMR(vector<vector<Mat> > &vImgAssign, vector<
 			vvImgDetect[scNr][lNr] = Mat::zeros(Size(vImgAssign[scNr][0].cols * 2.0f + 0.5, vImgAssign[scNr][0].rows * 2.0f + 0.5), CV_32FC1);
 		}
 
+		boost::timer::auto_cpu_timer at;
 		voteColor(vImgAssign[scNr], vvImgDetect[scNr], classProbs[scNr], -1, -1, this_class, default_rect, prob_threshold);
+		cout << "\t\t votecolor: ";
 	}
 
-
+	boost::timer::auto_cpu_timer at;
 	// detecting the peaks in the voting space
 	detectPeaks(candidates, vvImgDetect, scales, max_cands, kernel_width[0] , kernel_width[2], true, -1, this_class, threshold);
+	cout << "\t detectPeaks: ";
 }
 
 

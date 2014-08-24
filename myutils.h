@@ -2,19 +2,23 @@
 #include <cxcore.h>
 #include <highgui.h>
 
-#include <pcl/point_types.h>
+#include <Eigen/Eigenvalues> 
+#include <Eigen/Dense>
 
+#include <pcl/point_types.h>
+#include <pcl/point_cloud.h>
 
 using namespace std;
 using namespace cv;
-using namespace pcl;
+
+typedef Eigen::Matrix< float, 5, 1 > Vector5f;
+
 
 static const float MM_PER_M = 1000.;
 static const float M_PER_MM = 1.0/MM_PER_M;
 static const float F_X = 570.3;
 static const float F_Y = 570.3;
 
-typedef Eigen::Matrix< float, 5, 1 > Vector5f;
 
 
 inline void calcPC(Mat &normals, Mat &points, Mat &depth_img, Mat &pc, int k=5, float max_dist=0.02, bool dist_rel_z=true) {
@@ -92,7 +96,7 @@ inline bool calcPointsPCL(Mat &depth_img, pcl::PointCloud<pcl::PointXYZ>::Ptr &c
 
 	// TODO: dont handle only scale, but also the offset (c_x, c_y) of the given images center to the original image center (for training and roi images!)
 	
-	cloud.reset(new PointCloud<PointXYZ>(depth_img.cols, depth_img.rows));
+	cloud.reset(new pcl::PointCloud<pcl::PointXYZ>(depth_img.cols, depth_img.rows));
 	const float bad_point = 0;//std::numeric_limits<float>::quiet_NaN ();
 	const float constant_x = M_PER_MM / F_X;
 	const float constant_y = M_PER_MM / F_Y;
@@ -128,7 +132,7 @@ inline bool calcPointsPCL(Mat &depth_img, pcl::PointCloud<pcl::PointXYZ>::Ptr &c
 inline bool calcPointsRGBPCL(Mat &depth_img, Mat &bgr, pcl::PointCloud<pcl::PointXYZRGB>::Ptr &cloud, float scale) {
 
 	// TODO: dont handle only scale, but also the offset (c_x, c_y) of the given images center to the original image center (for training and roi images!)
-	cloud.reset(new PointCloud<PointXYZRGB>(depth_img.cols, depth_img.rows));
+	cloud.reset(new pcl::PointCloud<pcl::PointXYZRGB>(depth_img.cols, depth_img.rows));
 	const float bad_point = std::numeric_limits<float>::quiet_NaN ();
 	const float constant_x = M_PER_MM / F_X;
 	const float constant_y = M_PER_MM / F_Y;

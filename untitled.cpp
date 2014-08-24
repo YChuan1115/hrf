@@ -1,3 +1,7 @@
+#include "CRPatch.h"
+#include "HoG.h"
+#include "LoadBalancer.h"
+
 #define timer fubar
 #include <boost/progress.hpp>
 #undef timer
@@ -8,9 +12,7 @@
 #include <highgui.h>
 #include "opencv2/gpu/gpu.hpp"
 
-#include "CRPatch.h"
-#include "HoG.h"
-#include "LoadBalancer.h"
+
 
 using namespace std;
 using namespace cv;
@@ -76,9 +78,6 @@ void gpu_minmax_filt_test(Mat &img) {
 		}
 	}
 
-}
-void texit() {
-	cout << "EXIT" << endl;
 }
 
 void gpu_minmax_test(Mat &img) {
@@ -162,6 +161,7 @@ int main(int argc, char const *argv[]) {
 	//Mat img = imread("/home/stfn/dev/rgbd-dataset/rgbd-dataset/cereal_box/cereal_box_1/cereal_box_1_1_1_crop.png");
 	Mat img = imread("/home/stfn/dev/rgbd-dataset/rgbd-scenes/background/background_10/background_10_1.png");
 
+	//[](void){ cout << "lambda" << endl; }();
 
 	int i = 0;
 	LoadBalancer lb(2);
