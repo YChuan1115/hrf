@@ -1,5 +1,5 @@
 #include "CRForestDetector.h"
-#include "LoadBalancer.h"
+#include "LoadBalancer.hpp"
 
 #include <fstream>
 #include <iostream>
@@ -572,6 +572,7 @@ void detect(CRForestDetector &crDetect) {
 		boost::progress_display pd( file_test_num - off_test );
 		for (int i = off_test; i < off_test + file_test_num; ++i) {
 			++pd;
+			cout << "\n" << endl;
 			boost::timer::auto_cpu_timer at;
 
 			if (i >= vFilenames[tcNr].size())
@@ -721,7 +722,7 @@ void detect(CRForestDetector &crDetect) {
 				params[1] = cNr;
 				params[2] = theta;
 				params[3] = threshold_this_class;
-				boost::function<void(void)> job_func = boost::bind(&CRForestDetector::detectPyramidMR, &crDetect, boost::ref(vImgAssign), boost::ref(temp_candidates[cNr]), scales_this_class, kwidth, params, boost::ref(classConfidence));
+				function<void(void)> job_func = bind(&CRForestDetector::detectPyramidMR, &crDetect, ref(vImgAssign), ref(temp_candidates[cNr]), scales_this_class, kwidth, params, ref(classConfidence));
 				lb.add_job(job_func);
 			}
 
@@ -769,7 +770,7 @@ void detect(CRForestDetector &crDetect) {
 				params[1] = kernel_width[0];
 				params[2] = max_widths[candidates[candNr][4]];
 				params[3] = max_heights[candidates[candNr][4]];
-				boost::function<void(void)> job_func = boost::bind(hacky_candidate_parallelization, boost::ref(candidates), boost::ref(crDetect), boost::ref(img), boost::ref(vImgAssign), boost::ref(boundingboxes), params);
+				function<void(void)> job_func = bind(hacky_candidate_parallelization, ref(candidates), ref(crDetect), ref(img), ref(vImgAssign), ref(boundingboxes), params);
 				lb.add_job(job_func);
 			}
 			cout << "bb generation  ";

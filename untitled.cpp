@@ -1,6 +1,6 @@
 #include "CRPatch.h"
 #include "HoG.h"
-#include "LoadBalancer.h"
+#include "LoadBalancer.hpp"
 
 #define timer fubar
 #include <boost/progress.hpp>
@@ -12,6 +12,7 @@
 #include <highgui.h>
 #include "opencv2/gpu/gpu.hpp"
 
+#include <functional>
 
 
 using namespace std;
@@ -161,14 +162,26 @@ int main(int argc, char const *argv[]) {
 	//Mat img = imread("/home/stfn/dev/rgbd-dataset/rgbd-dataset/cereal_box/cereal_box_1/cereal_box_1_1_1_crop.png");
 	Mat img = imread("/home/stfn/dev/rgbd-dataset/rgbd-scenes/background/background_10/background_10_1.png");
 
-	//[](void){ cout << "lambda" << endl; }();
+	function<void (int, int, int, int)> process = [&img](int x_start, int x_end, int y_start, int y_end) {
+		cout << (void *)&img << "\n" << endl;
+	};
 
+	LoadBalancer lb;
+	lb.add_job(bind(process, 0,0,0,0));
+	lb.add_job(bind(process, 0,0,0,0));
+	lb.add_job(bind(process, 0,0,0,0));
+	lb.start_jobs();
+
+
+	return 0;
+	/*
 	int i = 0;
 	LoadBalancer lb(2);
-	lb.add_job(boost::bind(gpu_minmax_filt_test, boost::ref(img)));
-	lb.add_job(boost::bind(gpu_minmax_filt_test, boost::ref(img)));
-	lb.add_job(boost::bind(gpu_minmax_filt_test, boost::ref(img)));
+	lb.add_job(bind(gpu_minmax_filt_test, ref(img)));
+	lb.add_job(bind(gpu_minmax_filt_test, ref(img)));
+	lb.add_job(bind(gpu_minmax_filt_test, ref(img)));
 	lb.start_jobs();
+	*/
 
 	/*
 	Mat out = Mat::zeros(img.size(), CV_8UC3);
@@ -183,7 +196,4 @@ int main(int argc, char const *argv[]) {
 	//gpu_minmax_test(img);
 
 	//mat_access_test(img);
-
-
-
 }

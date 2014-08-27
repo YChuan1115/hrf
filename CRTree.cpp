@@ -8,18 +8,19 @@
  */
 
 #include "CRTree.h"
-#include <fstream>
-#include <highgui.h>
-#include <algorithm>
-#include <limits.h>
-
 #include "TrainStats.h"
+
+#include <highgui.h>
+
+#include <fstream>
+
 
 using namespace std;
 
-/////////////////////// Constructors /////////////////////////////
 
 unsigned int CRTree::treeCount = 0;
+
+
 
 // Read tree from file
 CRTree::CRTree(const char *filename, bool &success) {
