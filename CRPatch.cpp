@@ -7,9 +7,9 @@
 */
 
 #include "CRPatch.h"
-#include <highgui.h>
+#include "GpuHoG.cpp"
 
-#include <deque>
+#include <highgui.h>
 
 using namespace std;
 
@@ -58,100 +58,86 @@ void CRPatch::extractPatches(Mat &img, Mat &depth_img, unsigned int n, int label
 
 
 void CRPatch::extractFeatureChannels(Mat &img, Mat &depth_img, std::vector<Mat> &vImg, float scale) {
-	// 32 feature channels
-	// 7+9 channels: L, a, b, |I_x|, |I_y|, |I_xx|, |I_yy|, HOGlike features with 9 bins (weighted orientations 5x5 neighborhood)
+	// 58 feature channels
 
+	gpu::GpuMat gpu_img(img);
 	vImg.resize(58);
-	for (unsigned int c = 0; c < vImg.size(); ++c)
-		vImg[c] = Mat::zeros(Size(img.cols, img.rows), CV_8UC1);
+	vector<gpu::GpuMat> gpu_vImg(vImg.size());
+	for (unsigned int c = 0; c < vImg.size(); ++c) {
+		vImg[c] = Mat::zeros(img.size(), CV_8UC1);
+		gpu_vImg[c] = gpu::GpuMat(img.size(), CV_8UC1);
+	}
 
 	// Get intensity
-	cvtColor( img, vImg[0], CV_RGB2GRAY );
+	gpu::cvtColor( gpu_img, gpu_vImg[0], CV_RGB2GRAY );
 
 	// Temporary images for computing I_x, I_y (Avoid overflow for cvSobel)
-	Mat I_x, I_y;
+	gpu::GpuMat gpu_I_x(img.size(), CV_32FC1);
+	gpu::GpuMat gpu_I_y(img.size(), CV_32FC1);
 
 	// |I_x|, |I_y|
-	Sobel(vImg[0], I_x, CV_16SC1, 1, 0, 3);
-	Sobel(vImg[0], I_y, CV_16SC1, 0, 1, 3);
-	convertScaleAbs( I_x, vImg[3], 0.25);
-	convertScaleAbs( I_y, vImg[4], 0.25);
+	gpu::Sobel(gpu_vImg[0], gpu_I_x, CV_32FC1, 1, 0, 3);
+	gpu::Sobel(gpu_vImg[0], gpu_I_y, CV_32FC1, 0, 1, 3);
+	gpu_I_x.convertTo(gpu_vImg[3], CV_8UC1, 0.25);
+	gpu_I_y.convertTo(gpu_vImg[4], CV_8UC1, 0.25);
 
-	{
-		// Orientation of gradients
-		for (int y = 0; y < img.rows; ++y) {
-			short *dataX = I_x.ptr<short>(y);
-			short *dataY = I_y.ptr<short>(y);
-			uchar *dataZ = vImg[1].ptr<uchar>(y);
-
-			for (int x = 0; x < img.cols; ++x) {
-				// Avoid division by zero
-				float tx = dataX[x] + _copysign(0.000001f, (float)dataX[x]);
-				// Scaling [-pi/2 pi/2] -> [0 80*pi]
-				dataZ[x] = uchar( ( atan((float)dataY[x] / tx) + 3.14159265f / 2.0f ) * 80 );
-			}
-		}
-	}
-
-
-	{
-		// Magnitude of gradients
-		for (int y = 0; y < img.rows; ++y) {
-			short *dataX = I_x.ptr<short>(y);
-			short *dataY = I_y.ptr<short>(y);
-			uchar *dataZ = vImg[2].ptr<uchar>(y);
-
-			for (int x = 0; x < img.cols; ++x) {
-				dataZ[x] = (uchar)( sqrt(float(dataX[x] * dataX[x] + dataY[x] * dataY[x])) );
-			}
-		}
-	}
-
-	// 9-bin HOG feature stored at vImg[7] - vImg[15]
-	vector<Mat> vImgHog(vImg.begin() + 7, vImg.begin() + 7 + 9);
-	hog.extractOBin(vImg[1], vImg[2], vImgHog);
+	// gpu hog
+	vector<gpu::GpuMat> gpu_vImgHog(gpu_vImg.begin() + 7, gpu_vImg.begin() + 16);
+	GpuHoG gpuHog;
+	gpuHog.compute(gpu_vImg[0], gpu_vImgHog);
 
 	// |I_xx|, |I_yy|
-	Sobel(vImg[0], I_x, CV_16SC1, 2, 0, 3);
-	Sobel(vImg[0], I_y, CV_16SC1, 0, 2, 3);
-
-	convertScaleAbs( I_x, vImg[5], 0.25);
-	convertScaleAbs( I_y, vImg[6], 0.25);
+	gpu::Sobel(gpu_vImg[0], gpu_I_x, CV_32FC1, 2, 0, 3);
+	gpu::Sobel(gpu_vImg[0], gpu_I_y, CV_32FC1, 0, 2, 3);
+	gpu_I_x.convertTo(gpu_vImg[5], CV_8UC1, 0.25);
+	gpu_I_y.convertTo(gpu_vImg[6], CV_8UC1, 0.25);
 
 	// L, a, b
-	cvtColor(img, img, CV_RGB2Lab);
-	split(img, vector<Mat>(vImg.begin(), vImg.begin() + 3));
+	vector<gpu::GpuMat> gpu_lab_channels(gpu_vImg.begin(), gpu_vImg.begin() + 3);
+	gpu::cvtColor(gpu_img, gpu_img, CV_RGB2Lab);
+	gpu::split(gpu_img, gpu_lab_channels);
 
 
 	// depth image
-	cv::Mat depth_img_mat(depth_img);
-	cv::Mat dI_x, dI_y;
-	cv::Mat tmp;
+	gpu::GpuMat gpu_depth_img(depth_img);
+	gpu_I_x.convertTo(gpu_vImg[17], CV_8UC1, (0.075/scale));
 
-	convertScaleAbs(depth_img_mat / scale, vImg[17], 0.075);
+	gpu::Sobel(gpu_depth_img, gpu_I_x, CV_32FC1, 2, 0, 3);
+	gpu::Sobel(gpu_depth_img, gpu_I_y, CV_32FC1, 0, 2, 3);
+	gpu::divide(gpu_I_x, Scalar(16), gpu_I_x);
+	gpu::divide(gpu_I_y, Scalar(16), gpu_I_y);
 
-	Sobel(depth_img_mat, dI_x, CV_32FC1, 2, 0, 3);
-	Sobel(depth_img_mat, dI_y, CV_32FC1, 0, 2, 3);
-	dI_x /= 16.0;
-	dI_y /= 16.0;
+	gpu::abs(gpu_I_x, gpu_I_x);
+	gpu::abs(gpu_I_y, gpu_I_y);
 
-	dI_x = abs(dI_x);
-	dI_x *= 5;
-	threshold(dI_x, dI_x, 255, 255, CV_THRESH_TRUNC);
-	convertScaleAbs(dI_x, vImg[18], 1);
-	dI_y = abs(dI_y);
-	dI_y *= 5;
-	threshold(dI_y, dI_y, 255, 255, CV_THRESH_TRUNC);
-	convertScaleAbs(dI_y, vImg[19], 1);
+	gpu::multiply(gpu_I_x, Scalar(5), gpu_I_x);
+	gpu::multiply(gpu_I_y, Scalar(5), gpu_I_y);
 
+	gpu::threshold(gpu_I_x, gpu_I_x, 255, 255, CV_THRESH_TRUNC);
+	gpu::threshold(gpu_I_y, gpu_I_y, 255, 255, CV_THRESH_TRUNC);
 
-	// min filter
-	for (int c = 0; c < 29; ++c)
-		minfilt(vImg[c], vImg[c + 29], 5);
+	gpu_I_x.convertTo(gpu_vImg[18], CV_8UC1);
+	gpu_I_y.convertTo(gpu_vImg[19], CV_8UC1);
 
-	// max filter
-	for (int c = 0; c < 29; ++c)
-		maxfilt(vImg[c], 5);
+	gpu::Stream gpu_stream;
+	Ptr<gpu::BaseFilter_GPU> bf_min = gpu::getMinFilter_GPU(CV_8UC1, CV_8UC1, Size(5, 5));
+	Ptr<gpu::BaseFilter_GPU> bf_max = gpu::getMaxFilter_GPU(CV_8UC1, CV_8UC1, Size(5, 5));
+	Ptr<gpu::FilterEngine_GPU> filter_min = gpu::createFilter2D_GPU(bf_min, CV_8UC1, CV_8UC1);
+	Ptr<gpu::FilterEngine_GPU> filter_max = gpu::createFilter2D_GPU(bf_max, CV_8UC1, CV_8UC1);
+
+	for (int c = 0; c < 29; ++c) {
+		filter_min->apply(gpu_vImg[c], gpu_vImg[c+29]);
+		filter_max->apply(gpu_vImg[c], gpu_vImg[c]);
+		
+		gpu_stream.enqueueDownload(gpu_vImg[c], vImg[c]);
+		gpu_stream.enqueueDownload(gpu_vImg[c+29], vImg[c+29]);
+	}
+
+	gpu_stream.waitForCompletion();
+
+	for (unsigned int c = 0; c < gpu_vImg.size(); ++c) {
+		gpu_vImg[c].release();
+	}
 }
 
 void CRPatch::maxfilt(Mat &src, unsigned int width) {
