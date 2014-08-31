@@ -19,39 +19,6 @@ using namespace std;
 using namespace cv;
 
 
-class Parallel_process : public ParallelLoopBody {
-
-	static int no;
-private:
-	Mat img;
-	Mat &retVal;
-	int size;
-	int diff;
-
-public:
-	Parallel_process(Mat inputImgage, Mat &outImage, int sizeVal, int diffVal):
-		img(inputImgage), retVal(outImage), size(sizeVal), diff(diffVal) {
-
-	}
-
-	virtual void operator()(const Range &range) const {
-		int _no = no++;
-		cout << _no << endl;
-		cout << range.start << " " << range.end << endl;
-		while (true) {
-			for (int i = range.start; i < range.end; i++) {
-				/* divide image in 'diff' number
-				of parts and process simultaneously */
-
-				Mat in(img, Rect(0, (img.rows / diff)*i, img.cols, img.rows / diff));
-				Mat out(retVal, Rect(0, (retVal.rows / diff)*i, retVal.cols, retVal.rows / diff));
-				GaussianBlur(in, out, Size(size, size), 0);
-			}
-		}
-	}
-};
-int Parallel_process::no = 0;
-
 void gpu_minmax_filt_test(Mat &img) {
 	Mat img_gray, dst_gpu, dst_crp;
 	cvtColor(img, img_gray, CV_BGR2GRAY);
@@ -71,7 +38,7 @@ void gpu_minmax_filt_test(Mat &img) {
 
 	{
 		boost::progress_timer t;
-		CRPatch crp(0, 0, 0);
+		CRPatch crp(0, 16, 16);
 		for (int i = 0; i < 1000; ++i) {
 			Mat img_clone = img_gray.clone();
 			crp.maxfilt(img_clone, 5);
@@ -154,6 +121,32 @@ void mat_access_test(Mat &img) {
 	}
 }
 
+void max_dilate_test(Mat &img) {
+	Mat img_gray;
+	cvtColor(img, img_gray, CV_BGR2GRAY);
+	Mat img_delate = Mat::zeros(img_gray.cols, img_gray.rows, img_gray.type());
+	Mat img_max = Mat::zeros(img_gray.cols, img_gray.rows, img_gray.type());
+
+	{
+		boost::timer::auto_cpu_timer at;
+		for (int i = 0; i < 1; ++i) {
+			dilate(img_gray, img_delate, Mat(3,3, CV_8UC1));
+		}
+	}
+
+	{
+		CRPatch crp(0, 16, 16);
+		boost::timer::auto_cpu_timer at;
+		for (int i = 0; i < 1; ++i) {
+			crp.maxfilt(img_gray, img_max, 3);
+		}
+	}
+
+	cout << sum(img_delate) << endl;
+	cout << sum(img_max) << endl;
+
+}
+
 
 int main(int argc, char const *argv[]) {
 
@@ -162,34 +155,7 @@ int main(int argc, char const *argv[]) {
 	//Mat img = imread("/home/stfn/dev/rgbd-dataset/rgbd-dataset/cereal_box/cereal_box_1/cereal_box_1_1_1_crop.png");
 	Mat img = imread("/home/stfn/dev/rgbd-dataset/rgbd-scenes/background/background_10/background_10_1.png");
 
-	function<void (int, int, int, int)> process = [&img](int x_start, int x_end, int y_start, int y_end) {
-		cout << (void *)&img << "\n" << endl;
-	};
-
-	LoadBalancer lb;
-	lb.add_job(bind(process, 0,0,0,0));
-	lb.add_job(bind(process, 0,0,0,0));
-	lb.add_job(bind(process, 0,0,0,0));
-	lb.start_jobs();
-
-
-	return 0;
-	/*
-	int i = 0;
-	LoadBalancer lb(2);
-	lb.add_job(bind(gpu_minmax_filt_test, ref(img)));
-	lb.add_job(bind(gpu_minmax_filt_test, ref(img)));
-	lb.add_job(bind(gpu_minmax_filt_test, ref(img)));
-	lb.start_jobs();
-	*/
-
-	/*
-	Mat out = Mat::zeros(img.size(), CV_8UC3);
-	parallel_for_(Range(0, 8), Parallel_process(img, out, 5, 8));
-	imshow("image", img);
-	imshow("blur", out);
-	waitKey(0);
-	*/
+	max_dilate_test(img);
 
 	//gpu_minmax_filt_test(img);
 
