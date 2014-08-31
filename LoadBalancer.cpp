@@ -44,11 +44,14 @@ void LoadBalancer::start_jobs() {
 
 		// start jobs
 		while (running_thread_count < max_threads && !todo_list.empty()) {
-			global_mutex.lock();
 			// check again due to race conditions with altering running_thread_count
-			if (! running_thread_count < max_threads)
+			global_mutex.lock();
+			if (running_thread_count >= max_threads){
+				global_mutex.unlock();
 				break;
-			running_thread_count++;
+			} else {
+				running_thread_count++;
+			}
 			global_mutex.unlock();
 
 			local_mutex.lock();
