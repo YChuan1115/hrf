@@ -13,6 +13,12 @@
  *			* What does it mean to "bind" a function, that happens with memory, scope, cache ...
  *			* Is it bad if a bound function is copied, destroyed, referenced, shared_ptr...ed or
  *				passed to another bound function?
+ *			* Race condition on running_thread_count: Two threads running start_jobs can start a
+ *				new thread each, although there is only one free slot left, because altering 
+ *				running_thread_count happens AFTER starting the job. Right now its solved with
+ *				locking the global_mutex and checking again. Can/Should I delete the first check
+ *				in the while condition? Does this do the trick?
+ *			* http://progsch.net/wordpress/?p=81
  *				
 **/
 #pragma once

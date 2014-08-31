@@ -43,16 +43,20 @@ void LoadBalancer::start_jobs() {
 		}
 
 		// start jobs
-		while (running_thread_count < max_threads &&  !todo_list.empty()) {
+		while (running_thread_count < max_threads && !todo_list.empty()) {
+			global_mutex.lock();
+			// check again due to race conditions with altering running_thread_count
+			if (! running_thread_count < max_threads)
+				break;
+			running_thread_count++;
+			global_mutex.unlock();
+
 			local_mutex.lock();
 			DEBUG_DO(cout << "\tadding job" << endl);
 			function<void(void)> &func = todo_list.front();
 			thread_ptr tp(new thread(bind(&LoadBalancer::do_job, this, func)));
 			running_threads[tp->get_id()] = tp;
 			todo_list.pop();
-			global_mutex.lock();
-			running_thread_count++;
-			global_mutex.unlock();
 			local_mutex.unlock();
 		}
 
