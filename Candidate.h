@@ -1,14 +1,3 @@
-//
-// C++ Implementation: Candidate
-//
-// Description: this class holds an structure for keeping all the information necessary for a candidate object hypothesis
-//
-// Author: Nima Razavi, BIWI, ETH Zurich
-// Email: nrazavi@vision.ee.ethz.ch
-//
-//
-//
-
 #pragma once
 
 #include <vector>
@@ -32,7 +21,7 @@
 class Candidate {
 public:
 	// class constructors
-	Candidate(const CRForest *crForest, Mat &img, std::vector<float> candidate, int id, bool do_bpr = true);
+	Candidate(CRForest::ConstPtr crForest, Mat &img, std::vector<float> candidate, int id, bool do_bpr = true);
 	~Candidate() {
 		clear();
 	}

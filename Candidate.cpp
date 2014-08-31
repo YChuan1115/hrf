@@ -5,7 +5,7 @@ using namespace std;
 
 
 
-Candidate::Candidate(const CRForest *crForest, Mat &img, vector<float> candidate, int candNr, bool do_bpr) {
+Candidate::Candidate(CRForest::ConstPtr crForest, Mat &img, vector<float> candidate, int candNr, bool do_bpr) {
 
 	bpr = do_bpr;
 

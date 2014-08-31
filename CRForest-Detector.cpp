@@ -1,6 +1,9 @@
 #include "CRForestDetector.h"
 #include "LoadBalancer.hpp"
 
+#include <opencv2/core/core.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+
 #include <fstream>
 #include <iostream>
 #include <math.h>
@@ -422,7 +425,7 @@ void run_train() {
 	tpath.erase(tpath.find_last_of(PATH_SEP));
 	string execstr = "mkdir ";
 	execstr += tpath;
-	system( execstr.c_str() );
+	int ret = system( execstr.c_str() );
 
 	// Init training data
 	CRPatch Train(&cvRNG, p_width, p_height); //, 2);
@@ -581,7 +584,7 @@ void detect(CRForestDetector &crDetect) {
 			// Creat directory for the result
 			sprintf_s(buffer2, "%s/detect_o%d_n%d-%d-%d_cand_all", outpath.c_str(), off_tree, ntrees, tcNr, i);
 			sprintf_s(buffer3, "mkdir %s", buffer2);
-			system(buffer3);
+			int ret = system(buffer3);
 
 			// check the files
 			bool skipping = false;
@@ -811,27 +814,27 @@ void detect(CRForestDetector &crDetect) {
 void run_detect() {
 
 	// Init forest with number of trees
-	CRForest crForest( ntrees );
+	CRForest::Ptr crForest( new CRForest(ntrees));
 
 	// Load forest
-	crForest.loadForest(treepath.c_str(), off_tree);
+	crForest->loadForest(treepath.c_str(), off_tree);
 
 	vector<int> temp_classes; temp_classes.resize(1); temp_classes[0] = -1;
-	crForest.SetTrainingLabelsForDetection(temp_classes);
+	crForest->SetTrainingLabelsForDetection(temp_classes);
 
 	// Init detector
-	CRForestDetector crDetect(&crForest, p_width, p_height);
-	nlabels = crForest.GetNumLabels();
+	CRForestDetector crDetect(crForest, p_width, p_height);
+	nlabels = crForest->GetNumLabels();
 
 	// create directory for output
 	string execstr = "mkdir ";
 	execstr += outpath;
 
-	system( execstr.c_str() );
+	int ret = system( execstr.c_str() );
 
 	// run detector
 	if (do_hierarchy) {
-		crForest.loadHierarchy(hierarchy.c_str(), off_tree);
+		crForest->loadHierarchy(hierarchy.c_str(), off_tree);
 	}
 	detect(crDetect);
 }
@@ -951,4 +954,3 @@ int main(int argc, char *argv[]) {
 
 	return 0;
 }
-

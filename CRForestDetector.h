@@ -26,13 +26,13 @@ static Rect default_rect__;
 class CRForestDetector {
 
 private:
-	const CRForest *crForest_;
+	CRForest::ConstPtr crForest_;
 	vector<vector<int> > class_ids_;
 	Size patch_size_;
 
 public:
 	// Constructor
-	CRForestDetector(const CRForest *pRF, int width, int height) : crForest_(pRF), patch_size_(width, height) {
+	CRForestDetector(CRForest::ConstPtr pRF, int width, int height) : crForest_(pRF), patch_size_(width, height) {
 		crForest_->GetClassID(class_ids_);
 	}
 
@@ -53,17 +53,19 @@ private:
 /*************************************************************/
 
 public:
-	unsigned int GetNumLabels() const {
+	size_t GetNumLabels() const {
 		return crForest_->GetNumLabels();
 	}
-	void GetClassID(vector<vector<int> > &v_class_ids) {
+	void GetClassID(vector<vector<int> > &v_class_ids) const {
 		crForest_->GetClassID( v_class_ids);
 	}
-	bool GetHierarchy(vector<HNode> &hierarchy) { // returns false if it could not load the hierarchy
+
+	/** returns false if it could not load the hierarchy */
+	bool GetHierarchy(vector<HNode> &hierarchy) const {
 		return crForest_->GetHierarchy(hierarchy);
 	}
 
-	const CRForest *GetCRForest() {
+	CRForest::ConstPtr GetCRForest() const {
 		return crForest_;
 	}
 };

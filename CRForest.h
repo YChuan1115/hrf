@@ -1,3 +1,9 @@
+/**
+ *	Training Procedures (training_mode):
+ *		0: the training mode=0 does the InfGain over all classes
+ *		1: transforms all the positive class_ids into different labels and does multi-class training with InfGain/nlabels + InfGainBG
+ *		3: also transforms all the positive class ids into one label and does all-against-background training with InfGainBG
+**/
 #pragma once
 
 #include "CRTree.h"
@@ -7,6 +13,7 @@
 #undef timer
 #include <boost/timer/timer.hpp>
 
+#include <memory>
 #include <vector>
 
 
@@ -15,6 +22,9 @@ using namespace std;
 
 class CRForest {
 public:
+	typedef shared_ptr<CRForest> Ptr;
+    typedef shared_ptr<CRForest const> ConstPtr;
+
 	// Constructors
 	CRForest(int trees = 0, bool doSkip = true) {
 		vTrees.resize(trees);
@@ -57,20 +67,15 @@ public:
 	bool loadForest(const char *filename, unsigned int offset = 0);
 	void loadHierarchy(const char *hierarchy, unsigned int offset = 0);
 
+
 	// Trees
 	vector<CRTree *> vTrees;
-
 	// training labels to use for detection
 	vector<int>  use_labels;
-
 	// skipping training
 	bool do_skip;
-
 	// decide what kind of training procedures to take
-	int training_mode;// the normal information gain
-	// the training mode=0 does the InfGain over all classes
-	// the mode 1 transforms all the positive class_ids into different labels and does multi-class training with InfGain/nlabels + InfGainBG
-	// the mode 3 also transforms all the positive class ids into one label and does all-against-background training with InfGainBG
+	int training_mode;
 };
 
 // Matching
