@@ -820,7 +820,7 @@ void run_detect() {
 	crForest.SetTrainingLabelsForDetection(temp_classes);
 
 	// Init detector
-	CRForestDetector crDetect(&crForest, p_width, p_height, do_bpr);
+	CRForestDetector crDetect(&crForest, p_width, p_height);
 	nlabels = crForest.GetNumLabels();
 
 	// create directory for output
