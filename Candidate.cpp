@@ -1,41 +1,33 @@
 #include "Candidate.hpp"
 
-using namespace cv;
-using namespace std;
+
+Candidate::Candidate(CRForest::ConstPtr crForest, Mat &img, vector<float> candidate_data, int cand_id, bool do_bpr):
+	do_bpr_(do_bpr),
+	weight_(candidate_data[0]),
+	x_(candidate_data[1]),
+	y_(candidate_data[2]),
+	scale_(candidate_data[3]),
+	c_(candidate_data[4]),
+	r_(candidate_data[5]),
+	cand_id_(cand_id) {
 
 
+	n_trees_ = int(crForest->vTrees_.size());
+	n_classes_ = int(crForest->GetNumLabels());
 
-Candidate::Candidate(CRForest::ConstPtr crForest, Mat &img, vector<float> candidate, int candNr, bool do_bpr) {
-
-	bpr = do_bpr;
-
-	weight = candidate[0];
-	x = candidate[1];
-	y = candidate[2];
-	scale = candidate[3];
-	c = int(candidate[4]);
-	r = int(candidate[5]);
-
-	id = candNr;
-
-	//x_img and s_img should be already rescaled
-	n_trees = int(crForest->vTrees.size());
-	n_classes = int(crForest->GetNumLabels());
-
-	if (bpr) {
+	if (do_bpr_) {
 		// initialize the backprojection mask
-		backproj_mask = Mat::zeros(Size(img.cols * scale + 0.5, img.rows * scale + 0.5), CV_32FC1);
+		backproj_mask_ = Mat::zeros(Size(img.cols * scale_ + 0.5, img.rows * scale_ + 0.5), CV_32FC1);
 	}
-
 }
 
 
 void Candidate::getBBfromBpr(int thresh, bool do_sym) {
-	bb.resize(4);
+	bb_.resize(2);
 	Mat mask_thresh, backproj_mask_smooth;
 
 	// smooth backprojection mask
-	blur(backproj_mask, backproj_mask_smooth, Size(9, 9));
+	blur(backproj_mask_, backproj_mask_smooth, Size(9, 9));
 
 	// get the maximum and minimum values in the backprojection mask
 	double min_val_temp = 0;
@@ -49,7 +41,10 @@ void Candidate::getBBfromBpr(int thresh, bool do_sym) {
 	threshold( backproj_mask_smooth, mask_thresh, thresh_val, 1, CV_THRESH_BINARY);
 
 	// now we have to determine the box around the image
-	int min_x = backproj_mask.cols, min_y = backproj_mask.rows, max_x = -1, max_y = -1;
+	int min_x = backproj_mask_.cols;
+	int min_y = backproj_mask_.rows;
+	int max_x = -1;
+	int max_y = -1;
 
 	for (int y_ind = 0; y_ind < mask_thresh.rows ; ++y_ind) {
 		float *ptr = mask_thresh.ptr<float>(y_ind);
@@ -69,23 +64,16 @@ void Candidate::getBBfromBpr(int thresh, bool do_sym) {
 
 	// symmetrizing the box about the center if asked for
 	if (do_sym) {
-		float half_height = max(y - min_y + 1, max_y - y + 1);
-		float half_width = max(x - min_x + 1, max_x - x + 1);
-		min_x = x - half_width;
-		max_x = x + half_width;
-		min_y = y - half_height;
-		max_y = y + half_height;
+		float half_height = max(y_ - min_y + 1, max_y - y_ + 1);
+		float half_width = max(x_ - min_x + 1, max_x - x_ + 1);
+		min_x = x_ - half_width;
+		max_x = x_ + half_width;
+		min_y = y_ - half_height;
+		max_y = y_ + half_height;
 	}
 
-	bb[0] = min_x;
-	bb[1] = min_y;
-	bb[2] = max_x;
-	bb[3] = max_y;
-}
-
-
-void Candidate::clear() {
-	if (bpr) {
-		backproj_mask.release();
-	}
+	bb_[0].x = min_x;
+	bb_[0].y = min_y;
+	bb_[1].x = max_x;
+	bb_[1].y = max_y;
 }

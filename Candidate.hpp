@@ -1,46 +1,34 @@
 #pragma once
 
 #include "CRForest.hpp"
-#include "utils.h"
 
 #include <opencv2/core/core.hpp>
 
-#include <cassert>
-#include <fstream>
-#include <iostream>
-#include <stdio.h>
-#include <string>
 #include <vector>
+
+
+using namespace cv;
+using namespace std;
 
 
 
 class Candidate {
 public:
-	// class constructors
-	Candidate(CRForest::ConstPtr crForest, Mat &img, std::vector<float> candidate, int id, bool do_bpr = true);
-	~Candidate() {
-		clear();
-	}
-
+	float weight_;
+	float x_; // width in this case
+	float y_; // height in this case
+	float scale_;
+	int c_;//class
+	int r_;//ratio
+	int n_trees_;
+	int n_classes_;
+	int cand_id_;// candidate ID
+	bool do_bpr_; // if the backprojection is held
+	vector<Point2f> bb_; // bounding box structure
+	Mat backproj_mask_; // backprojection image
 
 public:
-	void clear();
+	Candidate(CRForest::ConstPtr crForest, Mat &img, vector<float> candidate, int cand_id, bool do_bpr = true);
+
 	void getBBfromBpr(int thresh = 2, bool do_sym = false);
-	void read(char *prefix) {}
-
-public:
-	float weight;
-	float x; // width in this case
-	float y; // height in this case
-	float scale;
-	int c;//class
-	int r;//ratio
-	int n_trees;
-	int n_classes;
-	int id;// candidate ID
-	bool bpr; // if the backprojection is held
-
-public:
-	std::vector<float> bb; // bounding box structure
-	Mat backproj_mask; // backprojection image
 };

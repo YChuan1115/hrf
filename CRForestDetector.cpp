@@ -50,7 +50,7 @@ void CRForestDetector::voteColor(vector<Mat> &vImgAssign, vector<Mat> &vImgDetec
 					if (ptr[cx] < 0)
 						continue;
 
-					LeafNode *tmp = crForest_->vTrees[trNr]->getLeaf(ptr[cx]);
+					LeafNode *tmp = crForest_->vTrees_[trNr]->getLeaf(ptr[cx]);
 
 					// loop over labels
 					for (size_t lNr = 0; lNr < vImgDetect.size(); ++lNr) {
@@ -108,8 +108,8 @@ void CRForestDetector::voteForCandidate(vector<Mat> &vImgAssign, Candidate &cand
 	double sample_votes = 0.998;// ignore the patches by this probability
 
 	// get cand_x and cand_y at this scale
-	int cand_x = int(cand.x * cand.scale + 0.5);
-	int cand_y = int(cand.y * cand.scale + 0.5);
+	int cand_x = int(cand.x_ * cand.scale_ + 0.5);
+	int cand_y = int(cand.y_ * cand.scale_ + 0.5);
 
 	int min_x, min_y, max_x, max_y;
 
@@ -140,25 +140,26 @@ void CRForestDetector::voteForCandidate(vector<Mat> &vImgAssign, Candidate &cand
 				if (value < sample_votes || ptr[cx] < 0)
 					continue;
 
-				LeafNode *tmp = crForest_->vTrees[trNr]->getLeaf(ptr[cx]);
-				float w = tmp->vPrLabel[cand.c] / ntrees;
+				LeafNode *tmp = crForest_->vTrees_[trNr]->getLeaf(ptr[cx]);
+				float w = tmp->vPrLabel[cand.c_] / ntrees;
 				if (w < 0.0e-7)
 					continue;
 
 				float w_element = 0.0f;
 				int idNr = 0;
-				vector<float>::const_iterator itW = tmp->vCenterWeights[cand.c].begin();
-				for (vector<Point>::const_iterator it = tmp->vCenter[cand.c].begin() ; it != tmp->vCenter[cand.c].end(); ++it, ++idNr, itW++) {
+				vector<float>::const_iterator itW = tmp->vCenterWeights[cand.c_].begin();
+				for (vector<Point>::const_iterator it = tmp->vCenter[cand.c_].begin() ; it != tmp->vCenter[cand.c_].end(); ++it, ++idNr, itW++) {
 					int x = int(float(cx) - float((*it).x) + 0.5);
 					int y = int(float(cy) - float((*it).y) + 0.5);
-					if (isInsideKernel2D(x, y, cand_x, cand_y , kernel_width)) {
+					float squared_dist = (x - cand_x) * (x - cand_y) + (y - cand_x) * (y - cand_y);
+					if (squared_dist < kernel_width * kernel_width) {
 						w_element += w * (*itW);
 					}
 				}
 
-				if ( w_element > 0.0 && cand.bpr) {
+				if ( w_element > 0.0 && cand.do_bpr_) {
 					// update the backprojection image
-					cand.backproj_mask.ptr<float>(cy)[cx] += w_element;
+					cand.backproj_mask_.ptr<float>(cy)[cx] += w_element;
 				}
 			}
 		}
@@ -385,7 +386,7 @@ void CRForestDetector::assignCluster(Mat &img, Mat &depth_img, vector<Mat> &vImg
 void CRForestDetector::fullAssignCluster(Mat &img, Mat &depth_img, vector<vector<Mat> > &vvImgAssign, vector<float> &scales) {
 
 	LoadBalancer lb;
-	size_t ntrees = crForest_->vTrees.size();
+	size_t ntrees = crForest_->vTrees_.size();
 	Scalar vvImgAssignValue(-1.0);
 	vector<Mat> img_scaled(scales.size());
 	vector<Mat> depth_scaled(scales.size());
@@ -460,7 +461,7 @@ void CRForestDetector::getClassConfidencePerScale(vector<Mat> &vImgAssign, vecto
 				if (leaf_id < 0)
 					continue;
 
-				LeafNode *tmp = crForest_->vTrees[trNr]->getLeaf(leaf_id);
+				LeafNode *tmp = crForest_->vTrees_[trNr]->getLeaf(leaf_id);
 
 				for (int cNr = 0; cNr < nlabels; ++cNr) {
 					tmpClassProbs[cNr].ptr<float>(y)[x] = tmp->vPrLabel[cNr] * inv_tree;

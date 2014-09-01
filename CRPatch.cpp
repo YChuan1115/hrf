@@ -6,10 +6,6 @@
 #include <deque>
 
 
-using namespace std;
-using namespace cv;
-
-
 
 void CRPatch::extractPatches(Mat &img, Mat &depth_img, unsigned int n, int label, int imageID, Rect &box, Point &vCenter, float scale) {
 	// extract features

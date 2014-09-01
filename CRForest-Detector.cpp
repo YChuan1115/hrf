@@ -32,7 +32,7 @@ bool do_hierarchy;
 // the Alpha in []
 float threshold_hierarchy;
 // Number of trees
-int ntrees;
+int num_trees;
 //Tree depth
 int treedepth;
 // Number of classes
@@ -121,7 +121,7 @@ void loadConfig(const char *filename, int mode) {
 		treepath = buffer;
 		// Number of trees
 		in.getline(buffer, 400);
-		in >> ntrees;
+		in >> num_trees;
 		in.getline(buffer, 400);
 		// Depth of tree
 		in.getline(buffer, 400);
@@ -225,21 +225,21 @@ void loadConfig(const char *filename, int mode) {
 		cout << "Train pos:        " << trainclasspath << endl;
 		cout << "                  " << trainclassfiles << endl;
 		cout << "                  " << subsamples_class << " " << subsamples_class_neg << " " << samples_class << endl;
-		cout << "Trees:            " << ntrees << " " << off_tree << " " << treepath << endl;
+		cout << "Trees:            " << num_trees << " " << off_tree << " " << treepath << endl;
 		cout << endl << "------------------------------------" << endl << endl;
 		break;
 
 	case 1:
 		cout << endl << "------------------------------------" << endl << endl;
 		cout << "Show:             " << endl;
-		cout << "Trees:            " << ntrees << " " << treepath << endl;
+		cout << "Trees:            " << num_trees << " " << treepath << endl;
 		cout << endl << "------------------------------------" << endl << endl;
 		break;
 
 	default:
 		cout << endl << "------------------------------------" << endl << endl;
 		cout << "Detection:        " << endl;
-		cout << "Trees:            " << ntrees << " " << treepath << endl;
+		cout << "Trees:            " << num_trees << " " << treepath << endl;
 		cout << "Patches:          " << p_width << " " << p_height << endl;
 		cout << "Images:           " << impath << endl;
 		cout << "                  " << imfiles << endl;
@@ -405,7 +405,7 @@ void extract_Patches(CRPatch &Train, CvRNG *pRNG) {
 void run_train() {
 
 	// Init forest with number of trees
-	CRForest crForest( ntrees , doSkip);
+	CRForest crForest(num_trees);
 
 	if (doSkip && crForest.loadForest(treepath.c_str(), off_tree)) {
 		return; // the forest is already trained
@@ -465,16 +465,14 @@ void run_train() {
 	// Train forest
 	crForest.trainForest(20, treedepth, &cvRNG, Train, 2000, class_structure, scale_tree);
 
-	bool ignore_statistics = true;
-
 	// initializing some statistics in to the leaf nodes
-	for (unsigned int trNr = 0; trNr < crForest.vTrees.size(); ++trNr) {
-		LeafNode *leaf = crForest.vTrees[trNr]->getLeaf();
+	for (unsigned int trNr = 0; trNr < crForest.vTrees_.size(); ++trNr) {
+		LeafNode *leaf = crForest.vTrees_[trNr]->getLeaf();
 		LeafNode *ptLN = &leaf[0];
 		vector<int> class_ids;
-		crForest.vTrees[trNr]->getClassId(class_ids);
+		crForest.vTrees_[trNr]->getClassId(class_ids);
 
-		for (unsigned int lNr = 0 ; lNr < crForest.vTrees[trNr]->getNumLeaf(); lNr++, ++ptLN) {
+		for (unsigned int lNr = 0 ; lNr < crForest.vTrees_[trNr]->getNumLeaf(); lNr++, ++ptLN) {
 			ptLN->eL = 0;
 			ptLN->fL = 0;
 			ptLN->vLabelDistrib.resize(class_ids.size(), 0);
@@ -524,20 +522,20 @@ void loadTestClassFile(vector<vector<string> > &vFilenames) {
 }
 
 
-void hacky_candidate_parallelization(vector<vector<float> > &candidates, CRForestDetector &crDetect, Mat &img, vector<vector<Mat> > &vImgAssign, vector< vector<float> > &boundingboxes, vector<float> params) {
+void hacky_candidate_parallelization(vector<vector<float> > &candidates, CRForestDetector &crDetect, Mat &img, vector<vector<Mat> > &vImgAssign, vector< vector<Point2f> > &boundingboxes, vector<float> params) {
 	int candNr = params[0];
 	float kernel_width = params[1];
 	int max_width = params[2];
 	int max_height = params[3];
 	bool do_bpr = true;
 	int scNr = 0;
-	while(candidates[candNr][3] != scales[scNr])
+	while (candidates[candNr][3] != scales[scNr])
 		scNr++;
 
 	Candidate cand(crDetect.GetCRForest(), img, candidates[candNr], candNr, do_bpr);
 	crDetect.voteForCandidate(vImgAssign[scNr], cand, kernel_width, max_width, max_height);
 	cand.getBBfromBpr();
-	boundingboxes[candNr] = cand.bb;
+	boundingboxes[candNr] = cand.bb_;
 }
 
 
@@ -583,7 +581,7 @@ void detect(CRForestDetector &crDetect) {
 				continue;
 
 			// Creat directory for the result
-			sprintf_s(buffer2, "%s/detect_o%d_n%d-%d-%d_cand_all", outpath.c_str(), off_tree, ntrees, tcNr, i);
+			sprintf_s(buffer2, "%s/detect_o%d_n%d-%d-%d_cand_all", outpath.c_str(), off_tree, num_trees, tcNr, i);
 			sprintf_s(buffer3, "mkdir %s", buffer2);
 			int ret = system(buffer3);
 
@@ -767,7 +765,7 @@ void detect(CRForestDetector &crDetect) {
 			at.start();
 
 			//initializing the file for the candidates
-			vector< vector<float> > boundingboxes(candidates.size());
+			vector< vector<Point2f> > boundingboxes(candidates.size());
 			for (unsigned int candNr = 0; candNr < candidates.size(); candNr++) {
 				vector<float> params(4);
 				params[0] = candNr;
@@ -801,7 +799,7 @@ void detect(CRForestDetector &crDetect) {
 			fp_boxes.open(buffer);
 			fp_boxes << boundingboxes.size() << endl;
 			for (unsigned int boxNr = 0; boxNr < boundingboxes.size(); boxNr++) {
-				fp_boxes << boundingboxes[boxNr][0] << " " << boundingboxes[boxNr][1] << " " << boundingboxes[boxNr][2] << " " << boundingboxes[boxNr][3] << endl;
+				fp_boxes << boundingboxes[boxNr][0].x << " " << boundingboxes[boxNr][0].y << " " << boundingboxes[boxNr][1].x << " " << boundingboxes[boxNr][1].y << endl;
 			}
 			fp_boxes.close();
 
@@ -815,7 +813,7 @@ void detect(CRForestDetector &crDetect) {
 void run_detect() {
 
 	// Init forest with number of trees
-	CRForest::Ptr crForest( new CRForest(ntrees));
+	CRForest::Ptr crForest( new CRForest(num_trees));
 
 	// Load forest
 	crForest->loadForest(treepath.c_str(), off_tree);
@@ -867,7 +865,7 @@ int main(int argc, char *argv[]) {
 		cout << "  arguments: " << endl;
 		cout << "    [number_of_trees] [test_image_offset] [number_of_test_images] [tree_offset] [test_class] [test_set] [test_scale] " << endl;
 		cout << endl;
-		cout << "  [number_of_trees] replaces the ntrees in the config file " << endl;
+		cout << "  [number_of_trees] replaces the num_trees in the config file " << endl;
 		cout << "  [test_image_offset] begin detection at this image instead of the first " << endl;
 		cout << "  [number_of_test_images] run detection on this number of images instead of doing it for all images" << endl;
 		cout << "  [tree_offset] loading the trees starting from this offset" << endl;
@@ -897,14 +895,14 @@ int main(int argc, char *argv[]) {
 		case 0:
 			// train forest
 			if (argc > 3)
-				ntrees = atoi(argv[3]);
+				num_trees = atoi(argv[3]);
 
 			if (argc > 4)
 				off_tree = atoi(argv[4]);
 			scale_tree = 1.0f;
 
 			cout << endl;
-			cout << "training mode " << training_mode << " ntrees " << ntrees << " tree_offset " << off_tree  << endl;
+			cout << "training mode " << training_mode << " num_trees " << num_trees << " tree_offset " << off_tree  << endl;
 			run_train();
 			break;
 
@@ -914,7 +912,7 @@ int main(int argc, char *argv[]) {
 			off_test = 0;
 
 			if (argc > 3)
-				ntrees = atoi(argv[3]);
+				num_trees = atoi(argv[3]);
 
 			if (argc > 4) {
 				off_test = atoi(argv[4]);
