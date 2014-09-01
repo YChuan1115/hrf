@@ -6,7 +6,7 @@
 **/
 #pragma once
 
-#include "CRTree.h"
+#include "CRTree.hpp"
 
 #define timer fubar
 #include <boost/progress.hpp>
@@ -32,7 +32,6 @@ public:
 
 	}
 	~CRForest() {
-		for (vector<CRTree *>::iterator it = vTrees.begin(); it != vTrees.end(); ++it) delete *it;
 		vTrees.clear();
 	}
 
@@ -69,7 +68,7 @@ public:
 
 
 	// Trees
-	vector<CRTree *> vTrees;
+	vector<CRTree::Ptr> vTrees;
 	// training labels to use for detection
 	vector<int>  use_labels;
 	// skipping training
@@ -92,7 +91,7 @@ inline void CRForest::trainForest(int min_s, int max_d, CvRNG *pRNG, const CRPat
 	boost::progress_display show_progress( vTrees.size() );
 
 	for (int i = 0; i < (int)vTrees.size(); ++i) {
-		vTrees[i] = new CRTree(min_s, max_d, TrData.vLPatches.size(), pRNG);
+		vTrees[i] = CRTree::Ptr( new CRTree(min_s, max_d, TrData.vLPatches.size(), pRNG));
 		vTrees[i]->setClassId(id);
 		vTrees[i]->SetScale(scale_tree);
 		vTrees[i]->setTrainingMode(training_mode);
@@ -117,7 +116,7 @@ inline bool CRForest::loadForest(const char *filename, unsigned int offset) {
 	for (unsigned int i = offset; i < vTrees.size() + offset; ++i, ++cccc) {
 		sprintf_s(buffer, "%s%03d.txt", filename, i);
 		bool s;
-		vTrees[cccc] = new CRTree(buffer, s);
+		vTrees[cccc] = CRTree::Ptr(new CRTree(buffer, s));
 		success *= s;
 		//vTrees[cccc]->saveTree(buffer);
 	}

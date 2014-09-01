@@ -3,11 +3,9 @@
 
 using namespace std;
 
-
-
 class TrainStats {
 public:
-	static TrainStats& get() {
+	static TrainStats &get() {
 		static TrainStats instance;
 		return instance;
 	}
@@ -19,14 +17,14 @@ public:
 private:
 	TrainStats();
 	~TrainStats();
-	TrainStats(TrainStats const&);
-	void operator=(TrainStats const&);
+	TrainStats(TrainStats const &);
+	void operator=(TrainStats const &);
 
 	/*member*/
 	vector<string> data;
-	vector<ofstream*> splitOutFiles;
-	vector<ofstream*> measureOutFiles;
-	vector<ofstream*> invOutFiles;
+	vector<ofstream *> splitOutFiles;
+	vector<ofstream *> measureOutFiles;
+	vector<ofstream *> invOutFiles;
 };
 
 
@@ -44,7 +42,7 @@ TrainStats::TrainStats() {
 		measureOutFiles.push_back(new ofstream(measureSs.str().c_str()));
 		invOutFiles.push_back(new ofstream(invSs.str().c_str()));
 	}
-	
+
 }
 
 TrainStats::~TrainStats() {

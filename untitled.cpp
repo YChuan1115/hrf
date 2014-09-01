@@ -1,5 +1,5 @@
-#include "CRPatch.h"
-#include "HoG.h"
+#include "CRPatch.hpp"
+#include "HoG.hpp"
 #include "LoadBalancer.hpp"
 
 #define timer fubar

@@ -1,7 +1,8 @@
-#include "CRForestDetector.h"
+#include "CRForestDetector.hpp"
 #include "LoadBalancer.hpp"
 
 #include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 
 #include <fstream>

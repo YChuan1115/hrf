@@ -1,16 +1,5 @@
-/*
- // Author: Juergen Gall, BIWI, ETH Zurich
- // Email: gall@vision.ee.ethz.ch
- //
- // Modified: Nima Razavi, BIWI, ETH Zurich
- // Email: nrazavi@vision.ee.ethz.ch
- //
- */
-
-#include "CRTree.h"
-#include "TrainStats.h"
-
-#include <highgui.h>
+#include "CRTree.hpp"
+#include "TrainStats.hpp"
 
 #include <fstream>
 
@@ -19,7 +8,6 @@ using namespace std;
 
 
 unsigned int CRTree::treeCount = 0;
-
 
 
 // Read tree from file

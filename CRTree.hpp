@@ -1,10 +1,12 @@
 #pragma once
 #define sprintf_s sprintf
 
-#include "CRPatch.h"
+#include "CRPatch.hpp"
 
-#include <iostream>
 #include <fstream>
+#include <iostream>
+#include <memory>
+
 
 using namespace std;
 
@@ -104,8 +106,12 @@ struct HNode {
 	vector<int> subclasses; // stores the id of the subclasses which are under this node,
 };
 
+
 class CRTree {
 public:
+	typedef shared_ptr<CRTree> Ptr;
+    typedef shared_ptr<CRTree const> ConstPtr;
+
 	// Constructors
 	CRTree(const char *filename, bool &success);
 	CRTree(int min_s, int max_d, int l, CvRNG *pRNG) : min_samples(min_s), max_depth(max_d), num_leaf(0), num_nodes(1), num_labels(l), cvRNG(pRNG) {

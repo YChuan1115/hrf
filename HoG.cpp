@@ -1,11 +1,7 @@
-/*
-// Author: Juergen Gall, BIWI, ETH Zurich
-// Email: gall@vision.ee.ethz.ch
-*/
+#include "HoG.hpp"
 
 #include <vector>
 #include <iostream>
-#include "HoG.h"
 
 
 

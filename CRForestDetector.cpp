@@ -1,4 +1,4 @@
-#include "CRForestDetector.h"
+#include "CRForestDetector.hpp"
 #include "LoadBalancer.hpp"
 
 #define timer fubar

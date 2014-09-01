@@ -1,17 +1,14 @@
-/*
-// Author: Juergen Gall, BIWI, ETH Zurich
-// Email: gall@vision.ee.ethz.ch
-*/
-
 #pragma once
 
+#include <cv.h>
+#include <opencv2/core/core.hpp>
 
-#include <cxcore.h>
 #include <vector>
 
 
 using namespace std;
 using namespace cv;
+
 
 
 class HoG {

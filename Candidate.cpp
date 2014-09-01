@@ -1,4 +1,4 @@
-#include "Candidate.h"
+#include "Candidate.hpp"
 
 using namespace cv;
 using namespace std;

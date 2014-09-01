@@ -1,17 +1,14 @@
-/*
-// Author: Juergen Gall, BIWI, ETH Zurich
-// Email: gall@vision.ee.ethz.ch
-//
-//  Modified: Nima Razavi, BIWI, ETH Zurich
-//
-*/
+#include "CRPatch.hpp"
 
-#include "CRPatch.h"
-#include <highgui.h>
+#include <opencv2/core/core.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
 
 #include <deque>
 
+
 using namespace std;
+using namespace cv;
+
 
 
 void CRPatch::extractPatches(Mat &img, Mat &depth_img, unsigned int n, int label, int imageID, Rect &box, Point &vCenter, float scale) {
@@ -124,9 +121,9 @@ void CRPatch::extractFeatureChannels(Mat &img, Mat &depth_img, std::vector<Mat> 
 
 
 	// depth image
-	cv::Mat depth_img_mat(depth_img);
-	cv::Mat dI_x, dI_y;
-	cv::Mat tmp;
+	Mat depth_img_mat(depth_img);
+	Mat dI_x, dI_y;
+	Mat tmp;
 
 	convertScaleAbs(depth_img_mat / scale, vImg[17], 0.075);
 

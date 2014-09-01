@@ -6,8 +6,8 @@
 */
 #pragma once
 
-#include "CRForest.h"
-#include "Candidate.h"
+#include "CRForest.hpp"
+#include "Candidate.hpp"
 #include "utils.h"
 
 #include <opencv2/core/core.hpp>

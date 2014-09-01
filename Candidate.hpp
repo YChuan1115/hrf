@@ -1,23 +1,19 @@
 #pragma once
 
-#include <vector>
-#include <iostream>
-#include <fstream>
-#include <cassert>
-#include <stdio.h>
-#include <string>
-#include "CRForest.h"
-#include <cxcore.h>
-#include <cv.h>
-#include <highgui.h>
+#include "CRForest.hpp"
 #include "utils.h"
 
+#include <opencv2/core/core.hpp>
+
+#include <cassert>
+#include <fstream>
+#include <iostream>
+#include <stdio.h>
+#include <string>
+#include <vector>
 
 
-/************************************/
-/****     CLASS Candidate        ****/
-/************************************/
-//
+
 class Candidate {
 public:
 	// class constructors

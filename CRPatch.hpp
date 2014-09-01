@@ -1,19 +1,13 @@
-/*
-// Author: Juergen Gall, BIWI, ETH Zurich
-// Email: gall@vision.ee.ethz.ch
-*/
-
 #pragma once
-
 #define _copysign copysign
 
-#include <cxcore.h>
-#include <cv.h>
+#include "HoG.hpp"
+
+#include <opencv2/core/core.hpp>
 
 #include <vector>
 #include <iostream>
 
-#include "HoG.h"
 
 using namespace std;
 using namespace cv;

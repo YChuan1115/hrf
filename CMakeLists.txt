@@ -42,10 +42,9 @@ link_directories(${OpenCV_LIBRARY_DIRS})
 #link_directories(${PCL_LIBRARY_DIRS})
 
 
-add_executable (CRForest-Detector CRForest-Detector.cpp Candidate.cpp CRForestDetector.cpp CRPatch.cpp CRTree.cpp HoG.cpp LoadBalancer.cpp)
+add_executable (CRForest-Detector Candidate.cpp CRForest-Detector.cpp CRForestDetector.cpp CRForest.cpp CRPatch.cpp CRTree.cpp HoG.cpp LoadBalancer.cpp)
 add_executable (untitled CRPatch.cpp HoG.cpp untitled.cpp LoadBalancer.cpp)
-add_executable (hog hog.cpp)
-add_executable (myhog myhog.cpp HoG.cpp GpuHoG.cpp)
+add_executable (myhog myhog.cpp HoG.cpp)
 
 
 target_link_libraries (CRForest-Detector 
@@ -56,10 +55,6 @@ target_link_libraries (CRForest-Detector
 target_link_libraries (untitled 
 	${OpenCV_LIBS}
 	${BOOST_LIBS}
-)
-
-target_link_libraries (hog 
-	${OpenCV_LIBS}
 )
 
 target_link_libraries (myhog 

@@ -1,8 +1,8 @@
 #include <boost/assert.hpp>
 #include <assert.h>
 
-#include "opencv2/gpu/gpu.hpp"
-#include "opencv2/highgui/highgui.hpp"
+#include <opencv2/gpu/gpu.hpp>
+#include <opencv2/highgui/highgui.hpp>
 
 
 using namespace std;

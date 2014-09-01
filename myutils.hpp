@@ -1,9 +1,7 @@
-#include <cv.h>
-#include <cxcore.h>
-#include <highgui.h>
-
 #include <Eigen/Eigenvalues> 
 #include <Eigen/Dense>
+
+#include <opencv2/core/core.hpp>
 
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
