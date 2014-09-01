@@ -44,17 +44,6 @@ public:
 	// Extract features from image
 	static void extractFeatureChannels(Mat &img, Mat &depth_img, vector<Mat> &vImg, float scale = 1.0);
 
-	// min/max filter
-	static void maxfilt(Mat &src, Mat &dst, unsigned int width);
-	static void minfilt(Mat &src, Mat &dst, unsigned int width);
-	static void minfilt(Mat &src, unsigned int width);
-	static void maxfilt(Mat &src, unsigned int width);
-	static void maxfilt(uchar *data, unsigned int step, unsigned int size, unsigned int width);
-	static void minfilt(uchar *data, unsigned int step, unsigned int size, unsigned int width);
-	static void minfilt(uchar *data, uchar *minvalues, unsigned int step, unsigned int size, unsigned int width);
-	static void maxfilt(uchar *data, uchar *maxvalues, unsigned int step, unsigned int size, unsigned int width);
-
-
 	vector<vector<PatchFeature> > vLPatches;
 	vector<vector<int> > vImageIDs;// vector the same size as
 
