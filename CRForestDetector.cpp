@@ -151,7 +151,7 @@ void CRForestDetector::voteForCandidate(vector<Mat> &vImgAssign, Candidate &cand
 				for (vector<Point>::const_iterator it = tmp->vCenter[cand.c_].begin() ; it != tmp->vCenter[cand.c_].end(); ++it, ++idNr, itW++) {
 					int x = int(float(cx) - float((*it).x) + 0.5);
 					int y = int(float(cy) - float((*it).y) + 0.5);
-					float squared_dist = (x - cand_x) * (x - cand_y) + (y - cand_x) * (y - cand_y);
+					float squared_dist = (x - cand_x) * (x - cand_x) + (y - cand_y) * (y - cand_y);
 					if (squared_dist < kernel_width * kernel_width) {
 						w_element += w * (*itW);
 					}

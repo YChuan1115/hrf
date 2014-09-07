@@ -99,6 +99,7 @@ int main(int argc, char const *argv[]) {
 
 	//Mat img = imread("/home/stfn/dev/rgbd-dataset/rgbd-dataset/cereal_box/cereal_box_1/cereal_box_1_1_1_crop.png");
 	Mat img = imread("/home/stfn/dev/rgbd-dataset/rgbd-scenes/background/background_10/background_10_1.png");
+	
 
 	//gpu_minMaxLoc_test(img);
 
