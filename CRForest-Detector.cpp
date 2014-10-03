@@ -1,9 +1,11 @@
 #include "CRForestDetector.hpp"
-#include "LoadBalancer.hpp"
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
+
+#include <tbb/task_group.h>
+#include <tbb/task_scheduler_init.h>
 
 #include <fstream>
 #include <iostream>
@@ -705,7 +707,7 @@ void detect(CRForestDetector &crDetect) {
 			at.start();
 
 			// hacky for the multi threading
-			LoadBalancer lb;
+			tbb::task_group tbb_tg;
 			vector<vector<vector<float > > > temp_candidates(nlabels - 1);
 
 			for (unsigned int cNr = 0; cNr < nlabels - 1; cNr++) {
@@ -725,10 +727,10 @@ void detect(CRForestDetector &crDetect) {
 				params[2] = theta;
 				params[3] = threshold_this_class;
 				function<void(void)> job_func = bind(&CRForestDetector::detectPyramidMR, &crDetect, ref(vImgAssign), ref(temp_candidates[cNr]), scales_this_class, kwidth, params, ref(classConfidence));
-				lb.add_job(job_func);
+				tbb_tg.run(job_func);
 			}
 
-			lb.start_jobs();
+			tbb_tg.wait();
 			cout << "detectPyramidMR()  ";
 			at.report();
 			at.start();
@@ -773,10 +775,10 @@ void detect(CRForestDetector &crDetect) {
 				params[2] = max_widths[candidates[candNr][4]];
 				params[3] = max_heights[candidates[candNr][4]];
 				function<void(void)> job_func = bind(hacky_candidate_parallelization, ref(candidates), ref(crDetect), ref(img), ref(vImgAssign), ref(boundingboxes), params);
-				lb.add_job(job_func);
+				tbb_tg.run(job_func);
 			}
 			cout << "bb generation  ";
-			lb.start_jobs();
+			tbb_tg.wait();
 			at.report();
 			at.start();
 
@@ -844,6 +846,9 @@ void run_detect() {
  *  Detailed description starts here.
  */
 int main(int argc, char *argv[]) {
+	tbb::task_scheduler_init init(5);
+
+
 	int mode = 1;
 
 	// Check argument

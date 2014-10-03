@@ -1,5 +1,4 @@
 #include "CRForestDetector.hpp"
-#include "LoadBalancer.hpp"
 
 #define timer fubar
 #include <boost/progress.hpp>
@@ -8,6 +7,8 @@
 
 #include <highgui.h>
 #include "opencv2/gpu/gpu.hpp"
+
+#include <tbb/task_group.h>
 
 #include <vector>
 
@@ -33,8 +34,7 @@ void CRForestDetector::voteColor(vector<Mat> &vImgAssign, vector<Mat> &vImgDetec
 		yShift = vImgAssign[0].rows * 0.50;
 
 	float ntrees = float(vImgAssign.size());
-	LoadBalancer lb(true);
-	vector<mutex> detect_mutexe(vImgDetect.size());
+	tbb::task_group tbb_tg;
 
 	// loop over trees
 	for (size_t trNr = 0; trNr < vImgAssign.size(); ++trNr) {
@@ -89,9 +89,9 @@ void CRForestDetector::voteColor(vector<Mat> &vImgAssign, vector<Mat> &vImgDetec
 			}
 		};
 
-		lb.add_job(bind(process));
+		tbb_tg.run(bind(process));
 	}
-	lb.start_jobs();
+	tbb_tg.wait();
 }
 
 
@@ -291,7 +291,7 @@ void CRForestDetector::detectPyramidMR(vector<vector<Mat> > &vImgAssign, vector<
 	int this_class = params[1];
 	float threshold = params[2];
 	float prob_threshold = params[3];
-	LoadBalancer lb(true);
+	tbb::task_group tbb_tg;
 
 	vector<vector<Mat> > vvImgDetect(vImgAssign.size());
 	{
@@ -310,9 +310,9 @@ void CRForestDetector::detectPyramidMR(vector<vector<Mat> > &vImgAssign, vector<
 
 			//voteColor(vImgAssign[scNr], vvImgDetect[scNr], classProbs[scNr], -1, -1, this_class, default_rect__, prob_threshold);
 			function<void(void)> job_func = bind(&CRForestDetector::voteColor, this, ref(vImgAssign[scNr]), ref(vvImgDetect[scNr]), ref(classProbs[scNr]), -1, -1, this_class, default_rect__, prob_threshold);
-			lb.add_job(job_func);
+			tbb_tg.run(job_func);
 		}
-		lb.start_jobs();
+		tbb_tg.wait();
 		cout << "\t voteColor: ";
 	}
 
@@ -344,7 +344,7 @@ void CRForestDetector::assignCluster(Mat &img, Mat &depth_img, vector<Mat> &vImg
 	int xoffset = patch_size_.width / 2;
 	int yoffset = patch_size_.height / 2;
 
-	LoadBalancer lb(true);
+	tbb::task_group tbb_tg;
 
 	for (int y = 0; y < img.rows - patch_size_.height; ++y) {
 
@@ -373,19 +373,19 @@ void CRForestDetector::assignCluster(Mat &img, Mat &depth_img, vector<Mat> &vImg
 		};
 
 
-		lb.add_job(bind(process));
+		tbb_tg.run(bind(process));
 		if (y % 50 == 0)
-			lb.start_jobs();
+			tbb_tg.wait();
 
 
 	} // end for y
-	lb.start_jobs();
+	tbb_tg.wait();
 }
 
 
 void CRForestDetector::fullAssignCluster(Mat &img, Mat &depth_img, vector<vector<Mat> > &vvImgAssign, vector<float> &scales) {
 
-	LoadBalancer lb;
+	tbb::task_group tbb_tg;
 	size_t ntrees = crForest_->vTrees_.size();
 	Scalar vvImgAssignValue(-1.0);
 	vector<Mat> img_scaled(scales.size());
@@ -407,16 +407,16 @@ void CRForestDetector::fullAssignCluster(Mat &img, Mat &depth_img, vector<vector
 
 		//assignCluster(img_scaled[scaleNr], depth_scaled[scaleNr], vvImgAssign[scaleNr], scales[scaleNr]);
 		function<void(void)> job_func = bind(&CRForestDetector::assignCluster, this, ref(img_scaled[scaleNr]), ref(depth_scaled[scaleNr]), ref(vvImgAssign[scaleNr]), ref(scales[scaleNr]));
-		lb.add_job(job_func);
+		tbb_tg.run(job_func);
 	}
 
-	lb.start_jobs();
+	tbb_tg.wait();
 }
 
 
 // Getting the per class confidences TODO: this has to become scalable
 void CRForestDetector::getClassConfidence(vector<vector<Mat> > &vImgAssign, vector<vector<Mat> > &classConfidence) {
-	LoadBalancer lb;
+	tbb::task_group tbb_tg;
 	int nlabels = crForest_->GetNumLabels();
 
 	// allocating space for the classConfidence
@@ -431,10 +431,10 @@ void CRForestDetector::getClassConfidence(vector<vector<Mat> > &vImgAssign, vect
 	// looping over the scales
 	for (size_t scNr = 0; scNr < vImgAssign.size(); ++scNr) {
 		function<void(void)> job_func = bind(&CRForestDetector::getClassConfidencePerScale, this, ref(vImgAssign[scNr]), ref(classConfidence[scNr]), nlabels);
-		lb.add_job(job_func);
+		tbb_tg.run(job_func);
 	}
 
-	lb.start_jobs();
+	tbb_tg.wait();
 }
 
 void CRForestDetector::getClassConfidencePerScale(vector<Mat> &vImgAssign, vector<Mat> &classConfidence, int nlabels) {
