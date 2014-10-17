@@ -1,9 +1,8 @@
 #include "CRPatch.hpp"
+#include "GpuHoG.hpp"
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
-
-#include <deque>
 
 
 
@@ -51,18 +50,14 @@ void CRPatch::extractPatches(Mat &img, Mat &depth_img, unsigned int n, int label
 
 
 void CRPatch::extractFeatureChannels(Mat &img, Mat &depth_img, std::vector<Mat> &vImg, float scale) {
-	// 32 feature channels
-	// 7+9 channels: L, a, b, |I_x|, |I_y|, |I_xx|, |I_yy|, HOGlike features with 9 bins (weighted orientations 5x5 neighborhood)
-
-	vImg.resize(58);
+	Mat I_x, I_y;
+	vImg.resize(60);
 	for (unsigned int c = 0; c < vImg.size(); ++c)
-		vImg[c] = Mat::zeros(Size(img.cols, img.rows), CV_8UC1);
+		vImg[c] = Mat::zeros(img.size(), CV_8UC1);
+
 
 	// Get intensity
 	cvtColor( img, vImg[0], CV_RGB2GRAY );
-
-	// Temporary images for computing I_x, I_y (Avoid overflow for cvSobel)
-	Mat I_x, I_y;
 
 	// |I_x|, |I_y|
 	Sobel(vImg[0], I_x, CV_16SC1, 1, 0, 3);
@@ -70,44 +65,14 @@ void CRPatch::extractFeatureChannels(Mat &img, Mat &depth_img, std::vector<Mat> 
 	convertScaleAbs( I_x, vImg[3], 0.25);
 	convertScaleAbs( I_y, vImg[4], 0.25);
 
-	{
-		// Orientation of gradients
-		for (int y = 0; y < img.rows; ++y) {
-			short *dataX = I_x.ptr<short>(y);
-			short *dataY = I_y.ptr<short>(y);
-			uchar *dataZ = vImg[1].ptr<uchar>(y);
-
-			for (int x = 0; x < img.cols; ++x) {
-				// Avoid division by zero
-				float tx = dataX[x] + _copysign(0.000001f, (float)dataX[x]);
-				// Scaling [-pi/2 pi/2] -> [0 80*pi]
-				dataZ[x] = uchar( ( atan((float)dataY[x] / tx) + 3.14159265f / 2.0f ) * 80 );
-			}
-		}
-	}
-
-
-	{
-		// Magnitude of gradients
-		for (int y = 0; y < img.rows; ++y) {
-			short *dataX = I_x.ptr<short>(y);
-			short *dataY = I_y.ptr<short>(y);
-			uchar *dataZ = vImg[2].ptr<uchar>(y);
-
-			for (int x = 0; x < img.cols; ++x) {
-				dataZ[x] = (uchar)( sqrt(float(dataX[x] * dataX[x] + dataY[x] * dataY[x])) );
-			}
-		}
-	}
-
 	// 9-bin HOG feature stored at vImg[7] - vImg[15]
+	GpuHoG gpuHog;
 	vector<Mat> vImgHog(vImg.begin() + 7, vImg.begin() + 7 + 9);
-	hog.extractOBin(vImg[1], vImg[2], vImgHog);
+	gpuHog.compute(vImg[0], vImgHog);
 
 	// |I_xx|, |I_yy|
 	Sobel(vImg[0], I_x, CV_16SC1, 2, 0, 3);
 	Sobel(vImg[0], I_y, CV_16SC1, 0, 2, 3);
-
 	convertScaleAbs( I_x, vImg[5], 0.25);
 	convertScaleAbs( I_y, vImg[6], 0.25);
 
@@ -115,34 +80,91 @@ void CRPatch::extractFeatureChannels(Mat &img, Mat &depth_img, std::vector<Mat> 
 	cvtColor(img, img, CV_RGB2Lab);
 	split(img, vector<Mat>(vImg.begin(), vImg.begin() + 3));
 
+	// min filter
+	for (int c = 0; c < 16; ++c) {
+		erode(vImg[c], vImg[c + 16], Mat(5, 5, CV_8UC1));
+		dilate(vImg[c], vImg[c], Mat(5, 5, CV_8UC1));
+	}
 
-	// depth image
-	Mat depth_img_mat(depth_img);
-	Mat dI_x, dI_y;
-	Mat tmp;
 
-	convertScaleAbs(depth_img_mat / scale, vImg[17], 0.075);
 
-	Sobel(depth_img_mat, dI_x, CV_32FC1, 2, 0, 3);
-	Sobel(depth_img_mat, dI_y, CV_32FC1, 0, 2, 3);
-	dI_x /= 16.0;
-	dI_y /= 16.0;
+	// Depth HoG
+	Sobel(depth_img, I_x, CV_32FC1, 1, 0, 7);
+	Sobel(depth_img, I_y, CV_32FC1, 0, 1, 7);
+	I_x /= 1280.f;
+	I_y /= 1280.f;
 
-	dI_x = abs(dI_x);
-	dI_x *= 5;
-	threshold(dI_x, dI_x, 255, 255, CV_THRESH_TRUNC);
-	convertScaleAbs(dI_x, vImg[18], 1);
-	dI_y = abs(dI_y);
-	dI_y *= 5;
-	threshold(dI_y, dI_y, 255, 255, CV_THRESH_TRUNC);
-	convertScaleAbs(dI_y, vImg[19], 1);
+	// depth gradient orientation and magnitude
+	for (int y = 0; y < depth_img.rows; ++y) {
+		float *grad_x = I_x.ptr<float>(y);
+		float *grad_y = I_y.ptr<float>(y);
+		uchar *grad_orient = vImg[32].ptr<uchar>(y);
+		uchar *grad_mag = vImg[33].ptr<uchar>(y);
+
+		for (int x = 0; x < depth_img.cols; ++x) {
+			// Orientation of gradients
+			float tx = grad_x[x] + _copysign(0.000001f, grad_x[x]);
+			// Scaling [-pi pi] -> [0 80*pi]
+			grad_orient[x] = uchar( (atan2(grad_y[x], grad_x[x]) + M_PI) * 40 );
+
+			// Magnitude of gradients
+			float mag = sqrt(grad_x[x]*grad_x[x] + grad_y[x]*grad_y[x]) * 5;
+			grad_mag[x] = uchar( (mag > 255) ? 255 : mag );
+		}
+	}
+
+	// 9-bin HOG feature stored at vImg[7] - vImg[15]
+	vector<Mat> vImgDepthHog(vImg.begin() + 37, vImg.begin() + 37 + 9);
+	hog.extractOBin(vImg[32], vImg[33], vImgDepthHog);
+
+
+	// |dI_x|, |I_y|
+	I_x = abs(I_x);
+	I_x *= 5;
+	threshold(I_x, I_x, 255, 255, CV_THRESH_TRUNC);
+	convertScaleAbs(I_x, vImg[33], 1);
+	I_y = abs(I_y);
+	I_y *= 5;
+	threshold(I_y, I_y, 255, 255, CV_THRESH_TRUNC);
+	convertScaleAbs(I_y, vImg[34], 1);
+
+	// |I_xx|, |I_yy|
+	Sobel(depth_img, I_x, CV_32FC1, 2, 0, 7);
+	Sobel(depth_img, I_y, CV_32FC1, 0, 2, 7);
+	I_x /= 768;
+	I_y /= 768;
+
+	I_x = abs(I_x);
+	I_x *= 5;
+	threshold(I_x, I_x, 255, 255, CV_THRESH_TRUNC);
+	convertScaleAbs(I_x, vImg[35], 1);
+	I_y = abs(I_y);
+	I_y *= 5;
+	threshold(I_y, I_y, 255, 255, CV_THRESH_TRUNC);
+	convertScaleAbs(I_y, vImg[36], 1);
+
+
+	// scaled depth value
+	float max = 5000.f;
+	depth_img.convertTo(depth_img, CV_32FC1);
+
+	for (size_t y = 0; y < depth_img.rows; ++y) {
+		float *row_ptr = depth_img.ptr<float>(y);
+		for (size_t x = 0; x < depth_img.cols; ++x) {
+			if (row_ptr[x] > max)
+				row_ptr[x] = max;
+			else if (row_ptr[x] <= 0)
+				row_ptr[x] == std::numeric_limits<uchar>::quiet_NaN();
+
+		}
+	}
+	depth_img /= scale;
+	cv::convertScaleAbs(depth_img, vImg[32], 255.0 / (max * 2.3333));
 
 
 	// min filter
-	for (int c = 0; c < 29; ++c)
-		erode(vImg[c], vImg[c + 29], Mat(5, 5, CV_8UC1));
-
-	// max filter
-	for (int c = 0; c < 29; ++c)
+	for (int c = 32; c < 46; ++c) {
+		erode(vImg[c], vImg[c + 14], Mat(5, 5, CV_8UC1));
 		dilate(vImg[c], vImg[c], Mat(5, 5, CV_8UC1));
+	}
 }

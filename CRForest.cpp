@@ -1,5 +1,7 @@
 #include "CRForest.hpp"
 
+#include <tbb/task_group.h>
+
 
 CRForest::CRForest(int num_trees) : vTrees_(num_trees) {
 }
@@ -53,15 +55,20 @@ void CRForest::regression(vector<const LeafNode *> &result, uchar **ptFCh, int s
 void CRForest::trainForest(int min_s, int max_d, CvRNG *pRNG, const CRPatch &TrData, int samples, vector<int> &id, float scale_tree) {
 	cout << "start training ..." << endl;
 	boost::progress_display show_progress( vTrees_.size() );
+	tbb::task_group tbb_tg;
 
 	for (int i = 0; i < (int)vTrees_.size(); ++i) {
-		vTrees_[i] = CRTree::Ptr( new CRTree(min_s, max_d, TrData.vLPatches.size(), pRNG));
-		vTrees_[i]->setClassId(id);
-		vTrees_[i]->SetScale(scale_tree);
-		vTrees_[i]->setTrainingMode(training_mode);
-		vTrees_[i]->growTree(TrData, samples);
-		++show_progress;
+		function<void()> job_func = [ &, i]() {
+			vTrees_[i] = CRTree::Ptr( new CRTree(min_s, max_d, TrData.vLPatches.size(), pRNG));
+			vTrees_[i]->setClassId(id);
+			vTrees_[i]->SetScale(scale_tree);
+			vTrees_[i]->setTrainingMode(training_mode);
+			vTrees_[i]->growTree(TrData, samples);
+			++show_progress;
+		};
+		tbb_tg.run(bind(job_func));
 	}
+	tbb_tg.wait();
 }
 
 

@@ -1,6 +1,5 @@
 #include "CRPatch.hpp"
 #include "HoG.hpp"
-#include "LoadBalancer.hpp"
 
 #define timer fubar
 #include <boost/progress.hpp>
