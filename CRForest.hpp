@@ -44,7 +44,7 @@ public:
 	void SetTrainingLabelsForDetection(vector<int> &class_selector);
 	void GetTrainingLabelsForDetection(vector<int> &class_selector);
 	// Regression
-	void regression(vector<const LeafNode *> &result, uchar **ptFCh, int stepImg) const;
+	void regression(vector<const LeafNode *> &result, vector<Mat> &vImg, int x, int y) const;
 	// Training
 	void trainForest(int min_s, int max_d, CvRNG *pRNG, const CRPatch &TrData, int samples, vector<int> &id, float scale_tree = 1.0f);
 	// IO functions

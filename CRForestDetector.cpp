@@ -1,4 +1,5 @@
 #include "CRForestDetector.hpp"
+#include "myutils.hpp"
 
 #define timer fubar
 #include <boost/progress.hpp>
@@ -21,7 +22,7 @@ using namespace cv;
 int COUNT;
 
 // given the cluster assignment images, we are voting into the voting space vImgDetect
-void CRForestDetector::voteColor(vector<Mat> &vImgAssign, vector<Mat> &vImgDetect, vector<Mat> &classProbs, float xShift, float yShift, int this_class, Rect &focus, float prob_threshold) {
+void CRForestDetector::voteColor(Mat &depth_img, vector<Mat> &vImgAssign, vector<Mat> &vImgDetect, vector<Mat> &classProbs, float xShift, float yShift, int this_class, Rect &focus, float prob_threshold) {
 	// vImgDetect are all initialized before
 
 	if (vImgAssign.size() < 1)
@@ -49,6 +50,9 @@ void CRForestDetector::voteColor(vector<Mat> &vImgAssign, vector<Mat> &vImgDetec
 					// get the leaf_id
 					if (ptr[cx] < 0)
 						continue;
+					float depth_scale = depth_img.ptr<float>(cy)[cx];
+					if (depth_scale < 0.1f)
+						depth_scale = 1.f;
 
 					LeafNode *tmp = crForest_->vTrees_[trNr]->getLeaf(ptr[cx]);
 
@@ -71,8 +75,9 @@ void CRForestDetector::voteColor(vector<Mat> &vImgAssign, vector<Mat> &vImgDetec
 							vector<float>::const_iterator itW = tmp->vCenterWeights[lNr].begin();
 							for (vector<Point>::const_iterator it = tmp->vCenter[lNr].begin(); it != tmp->vCenter[lNr].end(); ++it, itW++) {
 								// calc object hypothesis center
-								int x = int(float(cx) - float((*it).x) + 0.5 + xShift);
-								int y = int(float(cy) - float((*it).y) + 0.5 + yShift);
+								int x = int(float(cx) - float((*it).x) / depth_scale + 0.5 + xShift);
+								int y = int(float(cy) - float((*it).y) / depth_scale + 0.5 + yShift);
+
 
 								// finally vote into voting space
 								if (focus.width == 0) {
@@ -96,7 +101,7 @@ void CRForestDetector::voteColor(vector<Mat> &vImgAssign, vector<Mat> &vImgDetec
 
 
 // Gathering the information in the support of each candidate
-void CRForestDetector::voteForCandidate(vector<Mat> &vImgAssign, Candidate &cand, int kernel_width, float max_width, float max_height ) {
+void CRForestDetector::voteForCandidate(Mat &depth_img, vector<Mat> &vImgAssign, Candidate &cand, int kernel_width, float max_width, float max_height ) {
 
 	if (vImgAssign.size() < 1)
 		return;
@@ -145,12 +150,17 @@ void CRForestDetector::voteForCandidate(vector<Mat> &vImgAssign, Candidate &cand
 				if (w < 0.0e-7)
 					continue;
 
+				float depth_scale = depth_img.ptr<float>(cy)[cx];
+				if (depth_scale < 0.1f)
+					depth_scale = 1.f;
+
 				float w_element = 0.0f;
 				int idNr = 0;
 				vector<float>::const_iterator itW = tmp->vCenterWeights[cand.c_].begin();
 				for (vector<Point>::const_iterator it = tmp->vCenter[cand.c_].begin() ; it != tmp->vCenter[cand.c_].end(); ++it, ++idNr, itW++) {
-					int x = int(float(cx) - float((*it).x) + 0.5);
-					int y = int(float(cy) - float((*it).y) + 0.5);
+					int x = int(float(cx) - float((*it).x) / depth_scale + 0.5);
+					int y = int(float(cy) - float((*it).y) / depth_scale + 0.5);
+
 					float squared_dist = (x - cand_x) * (x - cand_x) + (y - cand_y) * (y - cand_y);
 					if (squared_dist < kernel_width * kernel_width) {
 						w_element += w * (*itW);
@@ -286,12 +296,25 @@ void CRForestDetector::detectPeaks(vector<vector<float> > &candidates, vector<ve
 	}
 }
 
-void CRForestDetector::detectPyramidMR(vector<vector<Mat> > &vImgAssign, vector<vector<float> > &candidates, vector<float> &scales, vector<float> &kernel_width, vector<float> &params, vector<vector<Mat> > &classProbs) {
+void CRForestDetector::detectPyramidMR(vector<vector<Mat> > &vImgAssign, vector<vector<float> > &candidates, vector<float> &scales, vector<float> &kernel_width, vector<float> &params, vector<vector<Mat> > &classProbs, Mat &depth_img) {
 	int max_cands = params[0];
 	int this_class = params[1];
 	float threshold = params[2];
 	float prob_threshold = params[3];
 	tbb::task_group tbb_tg;
+
+	Mat tmp_depth = depth_img.clone();
+	Mat points(tmp_depth.size(), CV_32FC3);
+	Mat dist(tmp_depth.size(), CV_32FC1);
+	tmp_depth.convertTo(tmp_depth, CV_32FC1);
+	calcPoints(tmp_depth, points, 1.0);
+	for (int y = 0; y < points.rows; ++y) {
+		Eigen::Vector3f *r_ptr_points = points.ptr<Eigen::Vector3f>(y);
+		float *r_ptr_dist = dist.ptr<float>(y);
+		for (int x = 0; x < points.cols; ++x) {
+			r_ptr_dist[x] = r_ptr_points[x].norm();
+		}
+	}
 
 	vector<vector<Mat> > vvImgDetect(vImgAssign.size());
 	{
@@ -309,12 +332,25 @@ void CRForestDetector::detectPyramidMR(vector<vector<Mat> > &vImgAssign, vector<
 			}
 
 			//voteColor(vImgAssign[scNr], vvImgDetect[scNr], classProbs[scNr], -1, -1, this_class, default_rect__, prob_threshold);
-			function<void(void)> job_func = bind(&CRForestDetector::voteColor, this, ref(vImgAssign[scNr]), ref(vvImgDetect[scNr]), ref(classProbs[scNr]), -1, -1, this_class, default_rect__, prob_threshold);
+			function<void(void)> job_func = bind(&CRForestDetector::voteColor, this, ref(dist), ref(vImgAssign[scNr]), ref(vvImgDetect[scNr]), ref(classProbs[scNr]), -1, -1, this_class, default_rect__, prob_threshold);
 			tbb_tg.run(job_func);
 		}
 		tbb_tg.wait();
 		cout << "\t voteColor: ";
 	}
+
+#if 0
+	// save the Hough spaces
+	for (unsigned int scNr = 0; scNr < scales.size(); scNr++) {
+		cv::Mat hough = vvImgDetect[scNr][this_class].clone();
+		cv::normalize(hough, hough, 0, 255, cv::NORM_MINMAX);
+		hough.convertTo(hough, CV_8UC1);
+		std::stringstream ss;
+		ss << "hough_c" << this_class << "_s" << scNr << ".png";
+		cv::imwrite(ss.str(), hough);
+	}
+
+#endif
 
 	boost::timer::auto_cpu_timer at;
 	// detecting the peaks in the voting space
@@ -338,8 +374,6 @@ void CRForestDetector::assignCluster(Mat &img, Mat &depth_img, vector<Mat> &vImg
 		vImgAssign[i] = initialAssignValue;
 
 
-	int stepVImg = vImg[0].step[0];
-
 	// x,y top left; cx,cy center of patch
 	int xoffset = patch_size_.width / 2;
 	int yoffset = patch_size_.height / 2;
@@ -350,24 +384,14 @@ void CRForestDetector::assignCluster(Mat &img, Mat &depth_img, vector<Mat> &vImg
 
 		function<void ()> process = [ &, y]() {
 
-			// Get start of row
-			uchar **ptFCh_row = new uchar*[vImg.size()];
-			for (size_t c = 0; c < vImg.size(); ++c)
-				ptFCh_row[c] = vImg[c].ptr<uchar>(y);
-
-
 			for (int x = 0; x < img.cols - patch_size_.width; ++x) {
 				vector<const LeafNode *> result;
 
-				crForest_->regression(result, ptFCh_row, stepVImg);
+				crForest_->regression(result, vImg, x, y);
 
 				for (size_t treeNr = 0; treeNr < result.size(); treeNr++) {
 					vImgAssign[treeNr].ptr<float>(y + yoffset)[x + xoffset] = float(result[treeNr]->idL);
 				}
-
-				// increase pointer - x
-				for (int c = 0; c < vImg.size(); ++c)
-					++ptFCh_row[c];
 
 			} // end for x
 		};
@@ -435,6 +459,21 @@ void CRForestDetector::getClassConfidence(vector<vector<Mat> > &vImgAssign, vect
 	}
 
 	tbb_tg.wait();
+
+#if 0
+	// save the class confidence
+	for (size_t i = 0; i < vImgAssign.size(); i++) {
+		for (int j = 0; j < nlabels; j++) {
+			cv::Mat cc = classConfidence[i][j].clone();
+			cv::normalize(cc, cc, 0, 255, cv::NORM_MINMAX);
+			cc.convertTo(cc, CV_8UC1);
+			std::stringstream ss;
+			ss << "cc_c" << j << "_s" << i << ".png";
+			cv::imwrite(ss.str(), cc);
+		}
+	}
+
+#endif
 }
 
 void CRForestDetector::getClassConfidencePerScale(vector<Mat> &vImgAssign, vector<Mat> &classConfidence, int nlabels) {

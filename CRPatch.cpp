@@ -1,9 +1,9 @@
 #include "CRPatch.hpp"
 #include "GpuHoG.hpp"
+#include "myutils.hpp"
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
-
 
 
 void CRPatch::extractPatches(Mat &img, Mat &depth_img, unsigned int n, int label, int imageID, Rect &box, Point &vCenter, float scale) {
@@ -15,11 +15,8 @@ void CRPatch::extractPatches(Mat &img, Mat &depth_img, unsigned int n, int label
 	int offy = height / 2;
 
 	// generate x,y locations
-	CvMat *locations = cvCreateMat( (img.cols - width) * (img.rows - height), 1, CV_32SC2 );
-	if (box.width == 0)
-		cvRandArr( cvRNG, locations, CV_RAND_UNI, cvScalar(0, 0, 0, 0), cvScalar(img.cols - width, img.rows - height, 0, 0) );
-	else
-		cvRandArr( cvRNG, locations, CV_RAND_UNI, cvScalar(box.x, box.y, 0, 0), cvScalar(box.x + box.width - width, box.y + box.height - height, 0, 0) );
+	CvMat *locations = cvCreateMat( (img.cols - 2*width) * (img.rows - 2*height), 1, CV_32SC2 );
+	cvRandArr( cvRNG, locations, CV_RAND_UNI, cvScalar(0, 0, 0, 0), cvScalar(img.cols - 2*width, img.rows - 2*height, 0, 0) );
 
 	// reserve memory
 	unsigned int offset = vLPatches[label].size();
@@ -33,11 +30,13 @@ void CRPatch::extractPatches(Mat &img, Mat &depth_img, unsigned int n, int label
 		vImageIDs[label].push_back(imageID);// adding the image id to the patch
 
 
-		vLPatches[label].back().roi.x = pt.x;  vLPatches[label].back().roi.y = pt.y;
-		vLPatches[label].back().roi.width = width;  vLPatches[label].back().roi.height = height;
+		vLPatches[label].back().roi.x = pt.x;
+		vLPatches[label].back().roi.y = pt.y;
+		vLPatches[label].back().roi.width = 2*width;
+		vLPatches[label].back().roi.height = 2*height;
 
-		vLPatches[label].back().center.x = pt.x + offx - vCenter.x;
-		vLPatches[label].back().center.y = pt.y + offy - vCenter.y;
+		vLPatches[label].back().center.x = pt.x + 2*offx - vCenter.x;
+		vLPatches[label].back().center.y = pt.y + 2*offy - vCenter.y;
 
 		vLPatches[label].back().vPatch.resize(vImg.size());
 		for (unsigned int c = 0; c < vImg.size(); ++c) {
@@ -51,7 +50,7 @@ void CRPatch::extractPatches(Mat &img, Mat &depth_img, unsigned int n, int label
 
 void CRPatch::extractFeatureChannels(Mat &img, Mat &depth_img, std::vector<Mat> &vImg, float scale) {
 	Mat I_x, I_y;
-	vImg.resize(60);
+	vImg.resize(61);
 	for (unsigned int c = 0; c < vImg.size(); ++c)
 		vImg[c] = Mat::zeros(img.size(), CV_8UC1);
 
@@ -89,10 +88,10 @@ void CRPatch::extractFeatureChannels(Mat &img, Mat &depth_img, std::vector<Mat> 
 
 
 	// Depth HoG
-	Sobel(depth_img, I_x, CV_32FC1, 1, 0, 7);
-	Sobel(depth_img, I_y, CV_32FC1, 0, 1, 7);
-	I_x /= 1280.f;
-	I_y /= 1280.f;
+	Sobel(depth_img, I_x, CV_32FC1, 1, 0, 3);
+	Sobel(depth_img, I_y, CV_32FC1, 0, 1, 3);
+	I_x /= 8.f;
+	I_y /= 8.f;
 
 	// depth gradient orientation and magnitude
 	for (int y = 0; y < depth_img.rows; ++y) {
@@ -129,10 +128,10 @@ void CRPatch::extractFeatureChannels(Mat &img, Mat &depth_img, std::vector<Mat> 
 	convertScaleAbs(I_y, vImg[34], 1);
 
 	// |I_xx|, |I_yy|
-	Sobel(depth_img, I_x, CV_32FC1, 2, 0, 7);
-	Sobel(depth_img, I_y, CV_32FC1, 0, 2, 7);
-	I_x /= 768;
-	I_y /= 768;
+	Sobel(depth_img, I_x, CV_32FC1, 2, 0, 5);
+	Sobel(depth_img, I_y, CV_32FC1, 0, 2, 5);
+	I_x /= 64.f;
+	I_y /= 64.f;
 
 	I_x = abs(I_x);
 	I_x *= 5;
@@ -143,11 +142,23 @@ void CRPatch::extractFeatureChannels(Mat &img, Mat &depth_img, std::vector<Mat> 
 	threshold(I_y, I_y, 255, 255, CV_THRESH_TRUNC);
 	convertScaleAbs(I_y, vImg[36], 1);
 
+	// true depth
+	depth_img.convertTo(depth_img, CV_32FC1);
+	Mat points(depth_img.size(), CV_32FC3);
+	Mat dist(depth_img.size(), CV_32FC1);
+	calcPoints(depth_img, points, scale);
+	for (int y = 0; y < points.rows; ++y) {
+		Eigen::Vector3f *r_ptr_points = points.ptr<Eigen::Vector3f>(y);
+		float *r_ptr_dist = dist.ptr<float>(y);
+		for (int x = 0; x < points.cols; ++x) {
+			r_ptr_dist[x] = r_ptr_points[x].norm();
+		}
+	}
+	vImg[60] = dist;
+
 
 	// scaled depth value
 	float max = 5000.f;
-	depth_img.convertTo(depth_img, CV_32FC1);
-
 	for (size_t y = 0; y < depth_img.rows; ++y) {
 		float *row_ptr = depth_img.ptr<float>(y);
 		for (size_t x = 0; x < depth_img.cols; ++x) {
@@ -158,8 +169,7 @@ void CRPatch::extractFeatureChannels(Mat &img, Mat &depth_img, std::vector<Mat> 
 
 		}
 	}
-	depth_img /= scale;
-	cv::convertScaleAbs(depth_img, vImg[32], 255.0 / (max * 2.3333));
+	cv::convertScaleAbs(depth_img, vImg[32], 255.0/max);
 
 
 	// min filter

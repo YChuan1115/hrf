@@ -9,11 +9,11 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
 #find_package(Boost 1.56.0 COMPONENTS system thread timer)
 #find_package(OpenCV REQUIRED)
 #find_package(Eigen3 3.2 REQUIRED)
-#find_package(PCL 1.7 REQUIRED)
+find_package(PCL 1.7 REQUIRED)
 
 
 # custom Boost
-if(NOT BOOST_FOUND)
+if(NOT BOOST_FOUND OR PCL_FOUND)
 	set (BOOST_ROOT "/home/stfn/libs/boost_1_56_0")
 	set (BOOST_INCLUDE_DIRS "/home/stfn/libs/boost_1_56_0")
 	set (BOOST_LIBRARY_DIRS "/home/stfn/libs/boost_1_56_0/stage/lib")
@@ -34,7 +34,7 @@ include_directories(
 	${EIGEN_INCLUDE_DIRS}
 	${BOOST_INCLUDE_DIRS}
 	${OpenCV_INCLUDE_DIRS}
-	#${PCL_INCLUDE_DIRS}
+	${PCL_INCLUDE_DIRS}
 )
 
 link_directories(${BOOST_LIBRARY_DIRS})

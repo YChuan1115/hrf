@@ -2,7 +2,6 @@
 
 #include <tbb/task_group.h>
 
-
 CRForest::CRForest(int num_trees) : vTrees_(num_trees) {
 }
 
@@ -44,10 +43,10 @@ int CRForest::GetSize() const {
 }
 
 
-void CRForest::regression(vector<const LeafNode *> &result, uchar **ptFCh, int stepImg) const {
+void CRForest::regression(vector<const LeafNode *> &result, vector<Mat> &vImg, int x, int y) const {
 	result.resize( vTrees_.size() );
 	for (unsigned int i = 0; i < vTrees_.size(); ++i) {
-		result[i] = vTrees_[i]->regression(ptFCh, stepImg);
+		result[i] = vTrees_[i]->regression(vImg, x, y);
 	}
 }
 

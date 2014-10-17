@@ -110,7 +110,7 @@ struct HNode {
 class CRTree {
 public:
 	typedef shared_ptr<CRTree> Ptr;
-    typedef shared_ptr<CRTree const> ConstPtr;
+	typedef shared_ptr<CRTree const> ConstPtr;
 
 	// Constructors
 	CRTree(const char *filename, bool &success);
@@ -176,7 +176,7 @@ public:
 	};
 
 	// Regression
-	const LeafNode *regression(uchar **ptFCh, int stepImg) const;
+	const LeafNode *regression(vector<Mat> &vImg, int x, int y) const;
 
 	// Training
 	void growTree(const CRPatch &TrData, int samples);
@@ -274,11 +274,14 @@ private:
 	// hierarchy as vector
 	vector<HNode> hierarchy;
 	CvRNG *cvRNG;
+
+	static const int depth_channel = 60;
 };
 
 
-inline const LeafNode *CRTree::regression(uchar **ptFCh, int stepImg) const {
+inline const LeafNode *CRTree::regression(vector<Mat> &vImg, int x, int y) const {
 	int node = 0;
+
 
 
 	// Go through tree until one arrives at a leaf, i.e. pnode[0]>=0)
@@ -287,11 +290,52 @@ inline const LeafNode *CRTree::regression(uchar **ptFCh, int stepImg) const {
 		// Note that x, y are changed since the patches are given as matrix and not as image
 		// p1 - p2 < t -> left is equal to (p1 - p2 >= t) == false
 
-		// pointer to channel
-		uchar *ptC = ptFCh[nodes[node].data[4]];
+		// depth scale value
+		float depth_scale = vImg[depth_channel].ptr<float>(y + 5)[x + 5];
 		// get pixel values
-		int p1 = ptC[nodes[node].data[0] + nodes[node].data[1] * stepImg];
-		int p2 = ptC[nodes[node].data[2] + nodes[node].data[3] * stepImg];
+		float x1 = nodes[node].data[0];
+		float y1 = nodes[node].data[1];
+		float x2 = nodes[node].data[2];
+		float y2 = nodes[node].data[3];
+		// scale
+		if (depth_scale > 0.1) {
+			x1 -= 5;
+			y1 -= 5;
+			x2 -= 5;
+			y2 -= 5;
+			x1 /= depth_scale;
+			y1 /= depth_scale;
+			x2 /= depth_scale;
+			y2 /= depth_scale;
+			x1 += 5;
+			y1 += 5;
+			x2 += 5;
+			y2 += 5;
+		}
+
+		x1 += x + 0.5;
+		y1 += y + 0.5;
+		x2 += x + 0.5;
+		y2 += y + 0.5;
+		if (x1 >= vImg[0].cols)
+			x1 = vImg[0].cols - 1;
+		if (y1 >= vImg[0].rows)
+			y1 = vImg[0].rows - 1;
+		if (x2 >= vImg[0].cols)
+			x2 = vImg[0].cols - 1;
+		if (y2 >= vImg[0].rows)
+			y2 = vImg[0].rows - 1;
+		if (x1 < 0)
+			x1 = 0;
+		if (y1 < 0)
+			y1 = 0;
+		if (x2 < 0)
+			x2 = 0;
+		if (y2 < 0)
+			y2 = 0;
+
+		int p1 = vImg[nodes[node].data[4]].ptr<uchar>(int(y1))[int(x1)];
+		int p2 = vImg[nodes[node].data[4]].ptr<uchar>(int(y2))[int(x2)];
 		// test
 		bool test = ( p1 - p2 ) >= nodes[node].data[5];
 

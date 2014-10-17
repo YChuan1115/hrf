@@ -1,4 +1,5 @@
 #include "CRForestDetector.hpp"
+#include "myutils.hpp"
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
@@ -393,6 +394,17 @@ void extract_Patches(CRPatch &Train, CvRNG *pRNG) {
 					exit(-1);
 				}
 
+				// resize
+				float r_scale = 0.7;
+				resize(img, img, Size(), r_scale, r_scale, CV_INTER_LINEAR);
+				resize(depth_img, depth_img, Size(), r_scale, r_scale, CV_INTER_NN);
+				vBBox[l][i].x *= r_scale;
+				vBBox[l][i].y *= r_scale;
+				vBBox[l][i].width *= r_scale;
+				vBBox[l][i].height *= r_scale;
+				vCenter[l][i].x *= r_scale;
+				vCenter[l][i].y *= r_scale;
+
 				// Extract positive training patches
 				Train.extractPatches(img, depth_img, samples_class, l, i , vBBox[l][i], vCenter[l][i]);
 			}
@@ -524,7 +536,7 @@ void loadTestClassFile(vector<vector<string> > &vFilenames) {
 }
 
 
-void hacky_candidate_parallelization(vector<vector<float> > &candidates, CRForestDetector &crDetect, Mat &img, vector<vector<Mat> > &vImgAssign, vector< vector<Point2f> > &boundingboxes, vector<float> params) {
+void hacky_candidate_parallelization(Mat &depth_img, vector<vector<float> > &candidates, CRForestDetector &crDetect, Mat &img, vector<vector<Mat> > &vImgAssign, vector< vector<Point2f> > &boundingboxes, vector<float> params) {
 	int candNr = params[0];
 	float kernel_width = params[1];
 	int max_width = params[2];
@@ -535,7 +547,7 @@ void hacky_candidate_parallelization(vector<vector<float> > &candidates, CRFores
 		scNr++;
 
 	Candidate cand(crDetect.GetCRForest(), img, candidates[candNr], candNr, do_bpr);
-	crDetect.voteForCandidate(vImgAssign[scNr], cand, kernel_width, max_width, max_height);
+	crDetect.voteForCandidate(depth_img, vImgAssign[scNr], cand, kernel_width, max_width, max_height);
 	cand.getBBfromBpr();
 	boundingboxes[candNr] = cand.bb_;
 }
@@ -655,6 +667,11 @@ void detect(CRForestDetector &crDetect) {
 				exit(-1);
 			}
 
+			// resize
+			float r_scale = 0.7;
+			resize(img, img, Size(), r_scale, r_scale, CV_INTER_LINEAR);
+			resize(depth_img, depth_img, Size(), r_scale, r_scale, CV_INTER_NN);
+
 			// preparation
 			vector<HNode> h;
 			vector<int> id2h;
@@ -726,7 +743,7 @@ void detect(CRForestDetector &crDetect) {
 				params[1] = cNr;
 				params[2] = theta;
 				params[3] = threshold_this_class;
-				function<void(void)> job_func = bind(&CRForestDetector::detectPyramidMR, &crDetect, ref(vImgAssign), ref(temp_candidates[cNr]), scales_this_class, kwidth, params, ref(classConfidence));
+				function<void(void)> job_func = bind(&CRForestDetector::detectPyramidMR, &crDetect, ref(vImgAssign), ref(temp_candidates[cNr]), scales_this_class, kwidth, params, ref(classConfidence), ref(depth_img));
 				tbb_tg.run(job_func);
 			}
 
@@ -768,13 +785,25 @@ void detect(CRForestDetector &crDetect) {
 
 			//initializing the file for the candidates
 			vector< vector<Point2f> > boundingboxes(candidates.size());
+			Mat tmp_depth = depth_img.clone();
+			Mat points(tmp_depth.size(), CV_32FC3);
+			Mat dist(tmp_depth.size(), CV_32FC1);
+			tmp_depth.convertTo(tmp_depth, CV_32FC1);
+			calcPoints(tmp_depth, points, 1.0);
+			for (int y = 0; y < points.rows; ++y) {
+				Eigen::Vector3f *r_ptr_points = points.ptr<Eigen::Vector3f>(y);
+				float *r_ptr_dist = dist.ptr<float>(y);
+				for (int x = 0; x < points.cols; ++x) {
+					r_ptr_dist[x] = r_ptr_points[x].norm();
+				}
+			}
 			for (unsigned int candNr = 0; candNr < candidates.size(); candNr++) {
 				vector<float> params(4);
 				params[0] = candNr;
 				params[1] = kernel_width[0];
 				params[2] = max_widths[candidates[candNr][4]];
 				params[3] = max_heights[candidates[candNr][4]];
-				function<void(void)> job_func = bind(hacky_candidate_parallelization, ref(candidates), ref(crDetect), ref(img), ref(vImgAssign), ref(boundingboxes), params);
+				function<void(void)> job_func = bind(hacky_candidate_parallelization, ref(dist), ref(candidates), ref(crDetect), ref(img), ref(vImgAssign), ref(boundingboxes), params);
 				tbb_tg.run(job_func);
 			}
 			cout << "bb generation  ";

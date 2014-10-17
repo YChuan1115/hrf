@@ -35,18 +35,18 @@ public:
 		crForest_->GetClassID(class_ids_);
 	}
 
-	void detectPyramidMR(vector<vector<Mat> > &vImgAssign, vector<vector<float> > &candidates, vector<float> &scales, vector<float> &kernel_width, vector<float> &params, vector< vector<Mat> > &classProbs);
+	void detectPyramidMR(vector<vector<Mat> > &vImgAssign, vector<vector<float> > &candidates, vector<float> &scales, vector<float> &kernel_width, vector<float> &params, vector< vector<Mat> > &classProbs, Mat &depth_img);
 	void fullAssignCluster(Mat &img, Mat &depth_img, vector<vector<Mat> > &vvImgAssign, vector<float> &scales);
 	void getClassConfidence(vector<vector<Mat> > &vImgAssign, vector<vector<Mat> > &classConfidence);
 	void getClassConfidencePerScale(vector<Mat> &vImgAssign, vector<Mat> &classConfidence, int nlabels);
-	void voteForCandidate(vector<Mat> &imgAssign, Candidate &new_cand, int kernel_width, float max_width, float max_height  );
+	void voteForCandidate(Mat &depth_img, vector<Mat> &imgAssign, Candidate &new_cand, int kernel_width, float max_width, float max_height  );
 	
 	
 
 private:
 	void assignCluster(Mat &img, Mat &depth_img, vector<Mat> &vImgAssign, float scale);
 	void detectPeaks(vector<vector<float> > &candidates, vector<vector<Mat> > &imgDetect, vector<float> scales, int max_cands, int kernel_width, float kernel_std, bool separate = true, float shift = -1.0f, int this_class = -1, float threshold = 0.0f);
-	void voteColor(vector<Mat> &vImgAssign, vector<Mat> &vImgDetect, vector<Mat> &classProbs, float xShift = -1.0f, float yShift = -1.0f, int this_class = -1, Rect &focus = default_rect__, float prob_threshold = -1);
+	void voteColor(Mat &depth_img, vector<Mat> &vImgAssign, vector<Mat> &vImgDetect, vector<Mat> &classProbs, float xShift = -1.0f, float yShift = -1.0f, int this_class = -1, Rect &focus = default_rect__, float prob_threshold = -1);
 
 
 /*************************************************************/
