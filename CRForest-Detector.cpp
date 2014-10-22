@@ -817,7 +817,7 @@ void detect(CRForestDetector &crDetect) {
 			fp_cands.open(buffer);
 			fp_cands << candidates.size() << endl;
 			for (unsigned int candNr = 0; candNr < candidates.size(); candNr++) {
-				fp_cands << candidates[candNr][0] << " " << candidates[candNr][1] << " " << candidates[candNr][2] << " " << candidates[candNr][3] << " " << candidates[candNr][4] << " " << candidates[candNr][5] << endl;
+				fp_cands << candidates[candNr][0] << " " << candidates[candNr][1]*(1.0/r_scale) << " " << candidates[candNr][2]*(1.0/r_scale) << " " << candidates[candNr][3] << " " << candidates[candNr][4] << " " << candidates[candNr][5] << endl;
 			}
 			fp_cands << "stuff" << endl;
 			fp_cands << "stuff" << endl;
@@ -830,7 +830,7 @@ void detect(CRForestDetector &crDetect) {
 			fp_boxes.open(buffer);
 			fp_boxes << boundingboxes.size() << endl;
 			for (unsigned int boxNr = 0; boxNr < boundingboxes.size(); boxNr++) {
-				fp_boxes << boundingboxes[boxNr][0].x << " " << boundingboxes[boxNr][0].y << " " << boundingboxes[boxNr][1].x << " " << boundingboxes[boxNr][1].y << endl;
+				fp_boxes << boundingboxes[boxNr][0].x*(1.0/r_scale) << " " << boundingboxes[boxNr][0].y*(1.0/r_scale) << " " << boundingboxes[boxNr][1].x*(1.0/r_scale) << " " << boundingboxes[boxNr][1].y*(1.0/r_scale) << endl;
 			}
 			fp_boxes.close();
 

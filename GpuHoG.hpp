@@ -114,7 +114,7 @@ public:
 	}
 
 	void compute(Mat &img_gray, vector<Mat> &vImgHog) {
-		BOOST_ASSERT_MSG(vImgHog.size() == this->nBins && false, "size of vImgHog needs to be GpuHoG::nBins");
+		BOOST_ASSERT_MSG(vImgHog.size() == this->nBins, "size of vImgHog needs to be GpuHoG::nBins");
 
 		// check if image size is compatible with the gpu hog
 		Mat img_gray_border_converted;
